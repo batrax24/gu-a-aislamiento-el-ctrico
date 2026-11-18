@@ -1,0 +1,32 @@
+{
+  "name": "aislamiento-electrico",
+  "private": true,
+  "version": "4.0.0",
+  "description": "AislaLab edición exposición — Guía visual y laboratorio interactivo de coordinación de aislamiento eléctrico centrado en la exposición (11 temas, 19 simuladores, glosario visual y simulacro)",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5",
+    "vitest": "^2.1.9"
+  }
+}
