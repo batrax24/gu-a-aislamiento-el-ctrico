@@ -139,16 +139,16 @@ describe('interacciones concretas', () => {
     catalog.unmount();
 
     await renderAt('#/glosario');
-    fireEvent.change(screen.getByPlaceholderText(/Buscar: Uₘ/i), { target: { value: 'DAR' } });
-    await waitFor(() => expect(screen.getByText(/Índice de absorción/)).toBeInTheDocument());
-    expect(screen.queryByText(/Voltaje máximo del equipo/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/Buscar: Uₘ/i), { target: { value: 'K_b' } });
+    await waitFor(() => expect(screen.getByText(/Verificación final del procedimiento IEC 71-1/)).toBeInTheDocument());
+    expect(screen.queryByText(/Tensión máxima del sistema/)).not.toBeInTheDocument();
   });
 
-  it('las fuentes muestran la bitácora de correcciones de la v2', async () => {
+  it('las fuentes muestran la bitácora de esta edición', async () => {
     await renderAt('#/fuentes');
-    expect(screen.getByRole('heading', { name: /Bitácora de correcciones/i })).toBeInTheDocument();
-    expect(screen.getByText(/saltaba 7 simuladores/i)).toBeInTheDocument();
-    expect(screen.getByText(/se dividía por δ dos veces/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Bitácora de esta edición/i })).toBeInTheDocument();
+    expect(screen.getByText(/megóhmetro, DAR\/PI/i)).toBeInTheDocument();
+    expect(screen.getByText(/IEC 71-1/i)).toBeInTheDocument();
   });
 });
 
@@ -181,20 +181,21 @@ describe('simulacro, reto y progreso', () => {
     expect(screen.getByText(/Aprobado: puedes sustentar/i)).toBeInTheDocument();
   });
 
-  it('cierra el reto e19 con 3 estrellas y guarda 25 XP en localStorage', async () => {
-    await renderAt('#/exp/e19');
-    fireEvent.click(screen.getByRole('button', { name: 'Aislamiento húmedo y sucio' }));
+  it('cierra el reto e05 con 3 estrellas y guarda 25 XP en localStorage', async () => {
+    await renderAt('#/exp/e05');
+    fireEvent.click(screen.getByRole('button', { name: /Impulso tipo rayo \(t ≈ 1 µs\)/ }));
     await settle(); // el hito de exploración queda registrado
-    fireEvent.click(screen.getByRole('button', { name: 'Aislamiento sano (seco y limpio)' }));
-    fireEvent.click(screen.getByRole('button', { name: /Aislamiento húmedo o contaminado en la superficie/i }));
+    fireEvent.change(screen.getByLabelText(/Tiempo de la tensión aplicada/), { target: { value: '2.25' } });
+    await settle(); // el segundo hito de exploración queda registrado
+    fireEvent.click(screen.getByRole('button', { name: /Porque en DC las cargas tienen tiempo/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Validar reto' }));
     await settle();
 
     expect(screen.getByText(/Reto cerrado con 3 estrellas/i)).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem('aislalab.progress') ?? '{}');
     expect(stored.xp).toBe(25);
-    expect(stored.solved.e19.stars).toBe(3);
-    expect(stored.quiz.e19).toBe('a');
+    expect(stored.solved.e05.stars).toBe(3);
+    expect(stored.quiz.e05).toBe('a');
   });
 
   it('reiniciar el avance pide confirmación y limpia el almacenamiento', async () => {

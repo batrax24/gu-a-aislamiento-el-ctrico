@@ -2,7 +2,7 @@
  * Kit de ilustración física para las escenas 2D.
  * Diseñado para representar equipos reales y reconocibles (torres de celosía,
  * cadenas de discos de vidrio/porcelana, pararrayos ZnO, transformadores con bujes,
- * montañas andinas, estratos de suelo, electrodos de cobre, osciloscopio y megóhmetro)
+ * montañas andinas, estratos de suelo, electrodos de cobre y osciloscopio)
  * con etiquetas legibles y semántica de color consistente.
  */
 

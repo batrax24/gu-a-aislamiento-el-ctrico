@@ -9,14 +9,14 @@ Esta guía está centrada en dos documentos de exposición:
 
 | Tema Expo 77 | Pregunta de ingeniería | Tema en la guía | Simuladores |
 | --- | --- | --- | --- |
-| 01 Mecanismos disruptivos (pp. 4–8) | ¿Cómo falla un material aislante? | T4 | `e05` avalancha, `e06` U₅₀, `e07` atmósfera δ |
+| 01 Mecanismos disruptivos (pp. 4–8) | ¿Cómo falla un material aislante? | T4 | `e05` ruptura DC/AC/impulso, `e06` U₅₀, `e07` atmósfera δ |
 | 02 Longitud de la cadena (pp. 9–17) | ¿Cuánto aislamiento superficial se necesita? | T5 | `e08` fuga 21 discos, `e09` maniobra/CFO |
 | 03 Separaciones eléctricas (pp. 18–28) | ¿Qué espacio debe conservar la línea? | T6 | `e10` viento, `e11` fase–fase |
 | 04 Cable de guarda (pp. 29–33) | ¿Cómo interceptamos el rayo? | T7 | `e12` α y EGM |
 | 05 Puesta a tierra (pp. 34–47) | ¿Cómo circula la corriente hacia el suelo? | T8 | `e13` varillas, `e14` flameo inverso |
 | 06 Ondas viajeras (pp. 48–54) | ¿Qué ocurre al cambiar de impedancia? | T9 | `e15` Γ/τ |
 | 07 Efecto corona (pp. 55–61) | ¿Por qué se ioniza el aire y qué pérdidas causa? | T10 | `e17` Peek |
-| Cierre (pp. 62–77) | ¿Qué conecta los siete bloques? | T11 | `e16` ZnO, `e18` misión final, `e19` medición |
+| Cierre (pp. 62–77) | ¿Qué conecta los siete bloques? | T11 | `e16` flujo IEC 71-1, `e18` misión final |
 
 ## 2. Sobretensiones 39: fundamentos
 
@@ -28,7 +28,7 @@ Esta guía está centrada en dos documentos de exposición:
 | Clasificación por frecuencia | p. 6 | T2 | `e01` |
 | Ejemplos (Ferranti, maniobra, falla a tierra) | pp. 8–11 | T2 | `e01`, `e02` |
 | Tradeoff E_aplicado vs. E_max/K_s | p. 13 | T1, T11 | `e01` |
-| BIL/BSL/K, NPM/NPR, K_M/K_I (IEC 71-1) | pp. 14–17 | T11 | `e16` |
+| BIL/BSL/K, NPM/NPR, K_M/K_I (IEC 71-1) | pp. 14–17 | T11 | `e16` flujo del diagrama |
 | Fenómeno del rayo: 4 tipos y fases I–IV | pp. 18–23 | T3 | `e04` |
 | Rampa y característico estadístico (α, I) | pp. 24–29 | T3 | `e04` |
 | N_g y velocidad de retorno | pp. 30–31 | T3 | `e04` |
@@ -46,9 +46,10 @@ La guía los convierte en diagnósticos del simulacro:
 - **25 Ω** no certifica seguridad ni respuesta impulsiva universal → `e13`.
 - **U₅₀** es 50 % de disrupción, no un umbral sin fallas → `e06`.
 - **Peek** es estimación empírica con condiciones y unidades → `e17`.
+- El **megóhmetro** no aparece en las exposiciones; esta edición no lo usa → (retirado de `e19`).
 
 ## 4. Pregunta de discusión (p. 77)
 
 > ¿Qué criterio controla el diseño cuando las exigencias se contradicen?
 
-Se responde en la misión final `e18`: cadena, guarda, tierra, U_c, TOV y margen deben estar en verde a la vez; un solo criterio en rojo invalida el diseño.
+Se responde en la misión final `e18`: cadena, altitud/δ, guarda, tierra y niveles IEC deben estar en verde a la vez; un solo criterio en rojo invalida el diseño.

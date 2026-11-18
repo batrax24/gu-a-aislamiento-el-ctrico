@@ -1,65 +1,55 @@
-# Bitácora de correcciones y convenciones normativas — AislaLab v3
+# Bitácora y convenciones de cálculo — AislaLab v4 (edición exposición)
 
-Este registro documenta qué se corrigió respecto a la versión 2 del laboratorio y qué convención se usa en cada cálculo. Es una bitácora didáctica: **no sustituye la consulta de normas, catálogos de fabricante ni estudios de diseño**.
+Esta edición reescribió la guía usando **las dos exposiciones del curso como única fuente** de ejemplos, fórmulas y cifras:
 
-## 1. Correcciones funcionales y de modelo
+- **Expo 77** — `Coordinacion_Aislamiento_77_Portada_Actualizada.pdf` (77 diapositivas, 7 temas + cierre).
+- **Sobretensiones 39** — `Aislamiento Fundamentos de sobretensiones (2)_compressed.pdf` (39 diapositivas).
 
-| Origen | Situación en v2 | Corrección aplicada en v3 |
+Se retiraron del texto y de las fuentes las normas y la bibliografía externa (IEC 60060/60071/60099/60815, Cardona, Velasco, Martínez, documentos de la asignatura): donde las láminas citan esos orígenes, la guía atribuye el contenido a la exposición, no a la norma. Las cifras que las láminas no fijan se declaran como **adopción del curso** o **ilustrativas** en el punto de uso.
+
+## 1. Qué cambió en esta edición
+
+| Origen | Situación anterior | Corrección en v4 |
 | --- | --- | --- |
-| Navegación | El botón «Siguiente» saltaba 7 simuladores al cambiar de tema (`e02`, `e03`, `e06`, `e09`, `e11`, `e14`, `e19`). | `src/experiments/index.ts` fija el orden secuencial `e01 → e19`; `experimentNeighbors()` entrega vecinos estrictos. |
-| Miga de pan | La ruta del tema volvía siempre al Tema 1. | Las rutas `#/tema/:id` y `#/exp/:id` tienen un botón «Inicio» que lleva a `#/`. |
-| `e02` | El caso de 500 kV con `Uₘ = 550 kV` quedaba limitado por un deslizador que llegaba a 420 kV. | El rango de `Uₘ` llega a 550 kV y las pruebas verifican que todo preset cae dentro de `[mín, máx]`. |
-| `e05` | La escena y la nota contradecían el cálculo al bajar `δ`. | `U₀`, la tensión aplicada, el estado físico y la lectura usan el mismo `compute()`. |
-| `e07` | La torre bajaba al aumentar la altitud. | La torre sube por la ladera; se muestran cota, presión `p`, densidad `δ` y moléculas de aire. |
-| `e09` | El CFO corregido se etiquetaba como «nivel del mar» y se dividía por `δ` dos veces. | `cfoRequired()` aplica una sola corrección por altitud; las etiquetas distinguen `CFO_mar` de `CFO_sitio`. |
-| `e10` | La cadena se alejaba de la torre con viento. | La cadena se mece **hacia** el acero y `d_h = d₀ − L·sen θ` se reduce; se añadió un hito de falla con 28°. |
-| `e11` | Faltaba separar claramente fórmula empírica y criterio NESC corregido por altitud. | El banco muestra `D ≈ K√(F+L) + Vₙ/150` y el claro NESC `3 + 0,2(V/δ − 8,7)` pulgadas, convirtiendo con `0,0254 × 1,15 × 2,3`. Se declara que es predimensionamiento. |
-| `e12` | No se dibujaban arcos electrogeométricos a escala. | La escena diferencia intercepción por guarda/torre de falla de apantallamiento usando `r_c = 10·I^0,65` y `α_crítico`. |
-| `e13` | La estacionalidad del suelo no se relacionaba con el flameo inverso. | El banco declara época seca/húmeda, paralelo de varillas `R₁/n^0,78` y contrapesos; el diagnóstico `d7` usa la condición crítica. |
-| `e15` | `z2` tenía mínimo 5 Ω (impidía el cortocircuito `Z₂ = 0`) y se graficaba `|Γ|`, ocultando la inversión. | `Γ = (Z₂ − Z₁)/(Z₂ + Z₁)` conserva su signo; `Z₂ = 0` es reachable; la gráfica Bewley muestra reflexiones positivas y negativas. Se declara `v ≤ c`. |
-| `e16` | El BIL se mostraba con una expresión duplicada en el estado en vivo. | El mensaje usa `p.bil` directamente. Las 4 verificaciones son `U_c`, TOV, `U_r` y margen con `U_equipo = U_res + L_c·d·di/dt`. |
-| `e17` | El umbral de corona se tomaba como dato fijo. | `U₀ = E₀·r_eq·ln(s/r_eq)` se calcula con `E₀ = 21,1·δ·m`, y `r_eq` se calcula para haces de 1–4 subconductores. |
-| `e18` | Se comprobaba `d.margin` en vez de `d.marginOk`, se comparaba contra `1400 kV` fijo y se dibujaban líneas inclinadas en vez de barras. | Se usan las seis banderas `chain, guard, ground, uc, tov, marginOk`; la comparación usa `p.cfo` y `BarComparisonPlot` dibuja pares esfuerzo vs. soporte. |
-| `e19` | La absorción se escribía como exponencial y la gráfica mostraba un eje `0..5` en bruto. | Se usa `(1 + t/τ)^−1,2`; la gráfica es logarítmica en MΩ con marcadores de 30 s, 60 s y 600 s. Humedad > 80 % se declara «ensayo no concluyente». |
+| Fuentes | 16 fuentes (normas IEC y bibliografía externa). | 2 fuentes: las dos exposiciones. La bitácora histórica v2→v3 se reemplaza por este registro. |
+| `e04` | Mezcla de fórmulas externas (α − η de Townsend, 31 kA/σ = 0,65 como mediana declarada). | Modelo 100 % de láminas: lognormales (negativas Ī = 29,96 kA, σ_ln = 0,65; positivas 35,16/1,23; p. 25), forma cerrada 1/(1 + (I/31)^2,6) (p. 26), r_c = 10·I^0,65 (Expo 77, p. 40), N_s = N_g·(28·h^0,6 + b)/10 (Expo 77, p. 35), N_g = 0,04·T_d^1,25 (p. 30), v = c/√(1 + W/I) (p. 31). |
+| `e05` | Modelo de avalancha/Townsend y escena con corte δ incoherente. | Tres regímenes DC / AC / impulso (pp. 34–36), retardos t_s y t_f (p. 36), curva V–t cualitativa de la lámina 12 y clasificación por duración/frecuencia (pp. 5–6). |
+| `e11` | Criterio NESC con factores 1,15 y 2,3 externos. | Solo la expresión del curso D ≈ K·√(F + L) + Vₙ/150 con K = 0,75 (Expo 77, pp. 25–26; da ≈ 4,02 m). |
+| `e16` | Selección de descargador ZnO según IEC 60099-4/5 (U_c, U_r, TOV, 1,05/0,02, cap. 195). | Procedimiento IEC 71-1 de la lámina 17: NPR/NPM → K_i, K_m → BIL = K_i·NPR → BIL_n ≥ BIL → BSL = K·BIL_n (K = 0,83 aceite / 0,75 aire) → K_b = BSL/NPM ≥ K_m; si falla, se incrementa BIL_n. |
+| `e18` | Proyecto integral con verificaciones de pararrayos ZnO y α ≤ 30° como criterio. | Cadena (fuga/maniobra, Expo 77 pp. 13–16), altitud δ (Sobretensiones p. 38), guarda α = arctan(Δx/Δh) con ejemplo 38,7° (p. 31), V_torre = R·i + L·di/dt (pp. 53–57) y niveles IEC 71-1 (Sobretensiones pp. 14–17). Los factores sin fuente en láminas (p. ej. 1,25/1,15/20 %, acoplamiento kc) se declaran como hipótesis adoptadas. |
+| `e19` | Megóhmetro: DAR/PI, ley (1 + t/τ)^−1,2. | **Eliminado**: no aparece en ninguna exposición. Referencias actualizadas: diagnóstico d5 (ahora flujo IEC 71-1), glosario, mapa físico, temas, README y pruebas. |
+| Fuentes normativas | Sección «Norma IEC» en tarjetas de fuentes. | Sin normas: todas las fichas son material del curso. |
 
-## 2. Correcciones de interfaz y accesibilidad
+## 2. Convenciones numéricas declaradas
 
-- El catálogo y el glosario tienen búsqueda, filtros por etapa/familia y estado pendiente.
-- El mapa físico usa 10 puntos numerados con `role="button"`, `tabIndex`, `aria-label` y activación por teclado.
-- Todas las escenas canvas incluyen pausa y repetición; las gráficas SVG incluyen leyenda, referencias, bandas y `caption`.
-- El progreso se guarda en `localStorage` con copia de seguridad y migración desde `labca.v2.progress`. Exportar/importar usa JSON; reiniciar pide confirmación dentro de la interfaz.
-- `ErrorBoundary` evita que una vista rota deje la página en blanco.
+1. **Unidades.** Frecuencia industrial en kV eficaces (RMS); impulsos en kV de cresta. 1,2/50 µs es voltaje; las ondas de corriente no se usan en esta edición (no aparecen en las láminas).
+2. **Formato es-CO.** `fmt()` usa coma decimal, punto de miles y signo − tipográfico. No devuelve `NaN`: un valor no finito se muestra como `—`.
+3. **Atmósfera.** `p(h) = 101,325·(1 − 2,25577·10⁻⁵·h)^5,25588` kPa; `δ = (p/p₀)·(T₀/T)` con `T₀ = 293,15 K` y T₀ C^0 = 20 °C (Sobretensiones, p. 38). Bogotá (2.640 m, 14 °C): p = 73,378 kPa, δ = 0,7393.
+4. **CFO y discos.** N = 6,6485·10⁻⁶·CFO² + 7,9192·10⁻³·CFO + 0,4219 (Expo 77, p. 16); válida hasta 20 discos según la propia lámina. CFO = Usoporte/(1 − kσ), k = 1,30, σ = 0,06 (p. 15); CFO corregido por altitud = CFO/δ (p. 15, corrección del documento).
+5. **Línea de fuga.** L_f = k_f·Uₘ con el coeficiente de la lámina 13 (k_f = 25 mm/kV, hipótesis entre fases del ejemplo); ⌈6.125/292⌉ = 21 discos → fuga real 6.132 mm; longitud 21 × 0,146 = 3,066 m.
+6. **Impulso normalizado.** t₁ = 1,67·(t₉₀ − t₃₀) con origen virtual t₀; t₂ hasta la semiamplitud de la cola (Sobretensiones, p. 36). Con τ₁ = 0,41 µs y τ₂ = 66 µs: t₁ ≈ 1,2 µs, t₂ ≈ 48,5 µs.
+7. **Disrupción U₅₀/CFO.** U_p = U₅₀ + z_p·σ, σ = (σ%/100)·U₅₀ (probabilidad normal, expo p. 8). Para U₅₀ = 700 kV, σ = 6 %, p = 10 %: U₁₀ ≈ 646,2 kV.
+8. **EGM.** r_c = 10·I^0,65 (Expo 77, p. 40; I = 31 kA → 93,2 m); r_g = [3,6 + 1,7·ln(43 − yᶜ)]·I^0,65 si yᶜ < 40 m, si no 5,51·I^0,65 (p. 42); yᶜ = H − (2/3)f (p. 41).
+9. **Ondas viajeras.** Z_c = √(L′/C′); v = 1/√(L′·C′); Γ = (Z₂ − Z₁)/(Z₂ + Z₁); τ = 2Z₂/(Z₂ + Z₁) (Expo 77, pp. 60–64). Ejemplo: 400 → 100 Ω, Γ = −0,6, τ = +0,4, V_t = 40 kV para V_i = 100 kV.
+10. **Corona.** Peek P_cor = (242/δ)·(f + 25)·√(r/s)·(U − U₀)²·10⁻⁵ para U > U₀ (Expo 77, p. 58); ejemplo de la actividad 13: U = 150 kV, U₀ = 120 kV (dato del ejemplo, etiquetado como tal), f = 60 Hz, δ = 0,90, r = 1,5 cm, s = 600 cm → P_cor ≈ 10,29 kW/km por conductor (pp. 59–60). La incepción con E₀ = 21,1·δ·m es una **adopción del curso** (las láminas no fijan E₀).
+11. **Constantes adoptadas.** Factores de la misión final que no figuran en las láminas (1,25 / 1,15 / 20 %, acoplamiento guarda–fase k_c = 0,25, índice K del flujo IEC según aceite/aire) se muestran siempre como hipótesis adoptadas o valores por defecto de catálogo-tipo, y nunca como cifras de las exposiciones.
+12. **IEC 71-1 (flujo).** BIL = K_i·NPR; BIL_n ≥ BIL; BSL = K·BIL_n; K_b = BSL/NPM ≥ K_m; si K_b < K_m, incrementar BIL_n (Sobretensiones, pp. 14–17). K = 0,83 (aceite) / 0,75 (aire); K_M = 1,15; K_I = 1,2–1,4 (común 1,25; 1,4 si < 52 kV).
 
-## 3. Convenciones numéricas declaradas
-
-1. **Unidades.** Frecuencia industrial en kV eficaces (RMS); impulsos de rayo y maniobra en kV de cresta. `1,2/50 µs` es voltaje; `8/20 µs` es corriente.
-2. **Formato es-CO.** `fmt()` usa coma decimal, punto de miles y signo `−` tipográfico. No devuelve `NaN`: un valor no finito se muestra como `—`.
-3. **Atmósfera.** `p(h) = 101,325·(1 − 2,25577·10⁻⁵·h)^5,25588` kPa; `δ = (p/p₀)·(T₀/T)` con `T₀ = 293,15 K`. Para Bogotá se usa `h = 2.640 m`, `T = 14 °C`.
-4. **Corrección externa.** `U_h = U_ref·δ^0,75` se aplica una sola vez a tensiones soportadas por aire externo.
-5. **Disrupción.** `U_p = U₅₀ + z_p·σ`, con `σ = (σ%/100)·U₅₀` y `z_p` del cuantil normal de Acklam. `U₅₀ = 700 kV`, `σ = 6 %`, `p = 10 %` da `646,2 kV`.
-6. **Línea de fuga.** `L_f = k_f·Uₘ / (k_a·base)`, donde `base = 1` entre fases y `base = √3` si el coeficiente está referido a fase–tierra. Cambiar de base cambia el resultado en `√3`; se declara en `e08`.
-7. **CFO y discos.** El ajuste cuadrático de Cardona se usa en ambos sentidos y se corrige por altitud una sola vez en `e09`.
-8. **NESC simplificado.** `3 + 0,2·(V/δ − 8,7)` pulgadas, multiplicado por `0,0254 m/pulg`, `1,15` y `2,3` para claro fase–fase. Es un predimensionamiento didáctico.
-9. **EGM.** `r_c = 10·I^0,65` (m, I en kA). El ángulo de apantallamiento describe geometría, no certifica desempeño por sí solo.
-10. **Ondas viajeras.** `Γ = (Z₂ − Z₁)/(Z₂ + Z₁)`, `τ = 2Z₂/(Z₂ + Z₁) = 1 + Γ`. El abierto ideal `Γ = +1` es el límite `Z₂ → ∞`, no `Z₂ = 2.000 Ω`.
-11. **ZnO.** `U_c`, TOV equivalente, `U_r`, `U_res` y margen `M = (BIL/U_equipo − 1)·100 %`. La caída inductiva de conexiones se suma a `U_res`.
-12. **Corona.** `E₀ = 21,1·δ·m` kV/cm eficaces; `U₀ = E₀·r_eq·ln(s/r_eq)`; Peek `P ∝ (U − U₀)²`. El haz aumenta `r_eq` y eleva `U₀`.
-13. **Megóhmetro.** `R(t)` usa absorción en ley de potencia; `DAR = R₆₀/R₃₀`, `PI = R₆₀₀/R₆₀`; temperatura `2^((T−20)/10)`; humedad alta invalida la lectura superficial.
-
-## 4. Anclas verificadas por pruebas
+## 3. Anclas verificadas por pruebas
 
 | Caso | Valor |
 | --- | --- |
 | `Uₘ = 245 kV` | `U_f = 141,45 kV` RMS; `Û_f = 200,04 kV` cresta |
 | Maniobra `2,5 p.u. × 1,15` | `575,12 kV` |
-| `τ₁ = 0,41 µs`, `τ₂ = 66 µs` | `t₁ ≈ 1,21 µs`, `t₂ ≈ 48,5 µs`, `t_p ≈ 2,1 µs` |
-| Bogotá | `p = 73,378 kPa`, `δ = 0,7393`, `700·δ^0,75 = 558,11 kV` |
-| `245 kV`, `k_f = 25`, 21 discos | `6.125 mm`, `3,066 m` |
+| `CFO = 575,1/(1 − 1,3 × 0,06)` | `623,8 kV` → `N = 7,95` → 8 discos (gana fuga: 21) |
+| Bogotá `2.640 m`, `14 °C` | `p = 73,378 kPa`, `δ = 0,7393` |
+| `245 kV`, `k_f = 25 mm/kV` | `6.125 mm` → `⌈6125/292⌉ = 21` discos → `6.132 mm` → `3,066 m` |
 | `U₅₀ = 700 kV`, `σ = 6 %`, `P = 10 %` | `646,17 kV` |
-| Varilla 3 m, `ρ = 300 Ω·m` | `101,81 Ω` |
-| `Z₁ = 400 Ω`, `Z₂ = 100 Ω` | `Γ = −0,60`, `τ = 0,40`, `V_t = 40 kV` para `V_i = 100 kV` |
-| `Z₁ = 400 Ω`, `Z₂ = 2.000 Ω` | `Γ = 0,667`, `τ = 1,667`, `V_t = 166,7 kV` |
-| ZnO `U_res = 600 kV`, `BIL = 1.050 kV`, `d = 12 m` | `U_equipo = 660 kV`, `M = 59,1 %` |
-| Peek `U = 150`, `U₀ = 120`, `r = 1,5 cm`, `s = 60 cm`, `δ = 0,9`, `f = 60 Hz` | `10,29 kW/km` |
+| Varilla `s = 3 m`, `r = 0,008 m`, `ρ = 100 Ω·m` | `R ≈ 35,1 Ω` (p. 49) |
+| Contrapeso `s = 20 m`, `r = 0,005 m`, `d = 0,5 m`, `ρ = 100 Ω·m` | `R ≈ 7,94 Ω` |
+| `Z₁ = 400 Ω`, `Z₂ = 100 Ω` | `Γ = −0,60`, `τ = 0,40`, `V_t = 40 kV` |
+| Peek (actividad 13) | `10,29 kW/km` |
 
-Las pruebas `src/lib/num.test.ts`, `src/app.render.test.tsx` y `src/app.dom.test.tsx` verifican estas anclas, los 19 simuladores con todos sus presets, la ausencia de `NaN`/errores en canvas y las interacciones DOM.
+Las pruebas `src/lib/num.test.ts`, `src/app.render.test.tsx` y `src/app.dom.test.tsx` verifican estas anclas, los 18 simuladores con todos sus presets, la ausencia de `NaN`/errores en canvas y las interacciones DOM.
+
+> Las cifras y modelos son modelos didácticos de las exposiciones: no sustituyen normas vigentes, catálogos ni estudios de diseño.

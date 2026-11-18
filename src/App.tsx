@@ -257,7 +257,7 @@ export function App() {
                 return (
                   <div className="page empty-state">
                     <h1>No encontramos ese simulador</h1>
-                    <p>El identificador «{route.id}» no está en el catálogo de 19 bancos.</p>
+                    <p>El identificador «{route.id}» no está en el catálogo de 18 bancos.</p>
                     <Btn tone="primary" onClick={() => go('#/catalogo')}>
                       Volver al catálogo
                     </Btn>
@@ -301,7 +301,7 @@ export function App() {
 
       <footer className="app-footer">
         <p>
-          <strong>AislaLab v4.0.0 · edición exposición</strong> · 11 temas, 19 simuladores, 8 diagnósticos y 16 fuentes centrados en la exposición (7 temas + fundamentos de sobretensiones). Las cifras son modelos didácticos: no reemplazan normas, catálogos ni estudios de diseño.
+          <strong>AislaLab v4.0.0 · edición exposición</strong> · 11 temas, 18 simuladores, 8 diagnósticos y 2 fuentes (las dos exposiciones del curso). Las cifras son modelos didácticos: no reemplazan normas, catálogos ni estudios de diseño.
         </p>
         <p className="mono">React + canvas + SVG · progreso local, sin servidor · sin recursos externos</p>
       </footer>

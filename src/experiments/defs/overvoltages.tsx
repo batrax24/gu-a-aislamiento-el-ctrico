@@ -83,7 +83,7 @@ const e01: Experiment = {
     {
       id: 'curso',
       label: 'Ejemplo de clase (2,5 p.u. en 245 kV)',
-      note: 'Caso base del guion: en Uₘ = 245 kV (Û_f = 200 kV), una maniobra de 2,5 p.u. alcanza 500,1 kV de cresta.',
+      note: 'Caso de la lámina 14: en Uₘ = 245 kV (Û_f = 200,04 kV), una maniobra de 2,5 p.u. alcanza 500,1 kV de cresta.',
       values: { um: 245, pu: 2.5, tFront: 250, tTail: 2500 },
     },
   ],
@@ -148,7 +148,7 @@ const e01: Experiment = {
     {
       label: 'Se representa con un ensayo de impulso',
       ok: e01class(p) !== 'temporal',
-      detail: e01class(p) === 'temporal' ? 'no: las temporales se ensayan con onda senoidal sostenida' : 'sí: impulso normalizado IEC 60060-1',
+      detail: e01class(p) === 'temporal' ? 'no: las temporales se evalúan en kV eficaces con su duración' : 'sí: impulso tipo rayo 1,2/50 µs o maniobra 250/2500 µs (lámina 36)',
     },
   ],
   goals: [
@@ -185,10 +185,10 @@ const e01: Experiment = {
       'Creer que decir «hubo una sobretensión de 2,5 p.u.» ya describe el problema. Sin indicar el frente y la duración no se sabe si corresponde a un ensayo de rayo (1,2/50 µs) o de maniobra (170–250/2500 µs).',
     model: 'Doble exponencial descriptiva para impulsos y onda senoidal para el régimen temporal. No incluye propagación a lo largo de la línea.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'diana', 'iec60060'],
+  sources: ['expo39', 'expo77'],
   notes: [
     'Frecuencia industrial en kV eficaces (RMS); impulsos tipo rayo y de maniobra en kV de cresta (pico).',
-    'IEC 60060-1:2025 expresa el impulso de maniobra como 170/2500 µs; textos clásicos usan 250/2500 µs según la definición del tiempo al pico.',
+    'Las láminas definen el impulso tipo rayo 1,2/50 µs y el de maniobra 250/2500 µs (Sobretensiones, p. 36), y las clases por duración y frecuencia (pp. 5–6): frente rápido 0,1–20 µs, frente lento 20–5000 µs, temporales ms–s.',
   ],
   scene: ({ p, d, t }) => {
     const cls = e01class(p);
@@ -343,22 +343,22 @@ const e01: Experiment = {
     );
   },
   plot: ({ p }) => {
-    const pts: [number, number][] = linspace(0.5, 6000, 120).map((x) => [x, p.pu]);
+    // Curva V (p.u.) vs t (s) tomada de la figura de la lámina 12: tres mesetas.
+    const pts: [number, number][] = [
+      [1e-7, 6.4], [1e-4, 6.4], [1e-4, 3.9], [1e-2, 3.9], [1e-2, 1.5], [1e1, 1.5], [1e1, 1.3], [1e3, 1.3],
+    ];
+    const tS = Math.max(p.tFront * 1e-6, 1.05e-7);
     return (
       <Plot
-        xDomain={[0.5, 6000]}
-        yDomain={[1, 4.2]}
+        xDomain={[1e-7, 1e3]}
+        yDomain={[0.8, 7]}
         xLog
-        xLabel="Tiempo de subida o frente (µs — escala logarítmica)"
-        yLabel="Amplitud del pico (p.u. de Û_f)"
-        bands={[
-          { x1: 0.5, x2: 20, color: 'rgba(109, 60, 232, 0.10)', label: 'Rayo (atmosférica)', textColor: '#5528C6' },
-          { x1: 20, x2: 3000, color: 'rgba(201, 122, 8, 0.10)', label: 'Maniobra (interruptor)', textColor: '#9A5B04' },
-          { x1: 3000, x2: 6000, color: 'rgba(214, 54, 44, 0.10)', label: 'Temporal (TOV)', textColor: '#B42318' },
-        ]}
-        series={[{ pts, color: 'rgba(11, 99, 206, 0.4)', width: 1.5, dash: '4 4', label: `Misma altura (${fmt(p.pu, 2)} p.u.)` }]}
-        markers={[{ x: p.tFront, y: p.pu, color: FRONT_COLOR[e01class(p)], label: `Tu onda (${e01class(p)})` }]}
-        caption="Mapa de clasificación: la altura dice cuántos p.u. alcanza el pico y la franja horizontal dice qué tan rápido golpea y con qué norma se ensaya."
+        xLabel="Tiempo t (s — escala logarítmica)"
+        yLabel="V (p.u.)"
+        series={[{ pts, color: PAL.surge, width: 2.6, steps: true, label: 'Clasificación por amplitud y duración (lámina 12)' }]}
+        refs={[{ at: 1, label: '1,0 p.u. (operación continua)', color: PAL.phase, dash: '3 4' }]}
+        markers={[{ x: tS, y: Math.min(p.pu, 6.9), color: FRONT_COLOR[e01class(p)], label: `Tu onda (${e01class(p)})` }]}
+        caption="Tres mesetas, según la figura de la lámina 12: atmosféricas ≈ 6,4 p.u. hasta ~10⁻⁴ s · maniobras ≈ 3,9 p.u. (10⁻⁵–10⁻² s) · temporales ≈ 1,5 p.u. (hasta ~10 s) y después ≈ 1,3. La marca muestra dónde cae tu onda."
       />
     );
   },
@@ -466,7 +466,7 @@ const e02: Experiment = {
       'Multiplicar 245 kV directamente por √2 cuando se busca el voltaje a tierra, o comparar 245 kV eficaces con 200 kV de cresta creyendo que 200 es menor. Primero divide entre √3, luego multiplica por √2.',
     model: 'Red trifásica sinusoidal equilibrada en operación normal previa a una falla.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'cardona'],
+  sources: ['expo39', 'expo77'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -586,7 +586,7 @@ const e03: Experiment = {
   contextLabel: 'Prueba de rayo en laboratorio',
   title: 'La onda 1,2/50 µs: cómo se mide un impulso de prueba',
   tagline: 'Frente (t₁), cola (t₂) y origen virtual sobre la pantalla del generador de impulsos',
-  why: 'Comprender qué significan «1,2» y «50» en la norma IEC 60060-1 y por qué no son iguales a las constantes τ₁ y τ₂ de la fórmula.',
+  why: 'Comprender qué significan «1,2» y «50» en la onda impulso tipo rayo (Sobretensiones, p. 36) y por qué no son iguales a las constantes τ₁ y τ₂ de la fórmula.',
   params: [
     {
       id: 'amp',
@@ -722,7 +722,7 @@ const e03: Experiment = {
     analogy:
       'Como el inicio real de un disparo en laboratorio suele tener ruido eléctrico, los ingenieros no miden desde el 0 % sino entre el 30 % y el 90 % de la subida (donde la curva es limpia) y proyectan una regla hasta el eje cero: ese cruce es el «origen virtual».',
     phenomenon:
-      'Para que todos los laboratorios del mundo prueben los aisladores con el mismo «rayo artificial», IEC 60060-1 define el impulso 1,2/50 µs midiendo dos puntos limpios en la subida (30 % y 90 %) y el punto donde la cola cae a la mitad (50 %).',
+      'El impulso tipo rayo 1,2/50 µs queda definido por el frente convencional t₁ = 1,67·(t₉₀−t₃₀) con origen virtual t₀, y por la cola hasta la semiamplitud t₂ (Sobretensiones, p. 36). Las láminas también definen el impulso de maniobra 250/2500 µs.',
     objective:
       'Saber leer los dos números de «1,2/50 µs», distinguirlos de las constantes exponenciales τ₁ y τ₂, y nunca confundir 1,2/50 µs (voltaje) con 8/20 µs (corriente).',
     watch: [
@@ -733,8 +733,8 @@ const e03: Experiment = {
     misconception: 'Escribir e^(−t/50) − e^(−t/1,2) creyendo que 1,2 y 50 son τ₁ y τ₂. Si haces eso, el frente real sale de ~3,2 µs, no de 1,2 µs.',
     model: 'Doble exponencial ideal sin oscilaciones superpuestas; origen virtual exacto sobre la secante 30–90 %.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'iec60060', 'ejercicios'],
-  notes: ['La guía de ejercicios reporta 49,3 µs en una aproximación simplificada; con el origen virtual completo resulta t₂ ≈ 48,5 µs (dentro de 50 ± 5 µs).'],
+  sources: ['expo39', 'expo77'],
+  notes: ['Las láminas definen las formas de impulso 1,2/50 µs y 250/2500 µs (p. 36) y los dos retardos que gobiernan la ruptura: el estadístico t_s y el formativo t_f (p. 36). Las tolerancias de calibración del generador corresponden a la norma de técnicas de ensayo, fuera del alcance de las láminas.'],
   scene: ({ p, d, t }) => {
     const m = impulseMetrics(p.tau1, p.tau2);
     const waveCol = d.okAll ? PAL.okBright : PAL.warnBright;
@@ -844,7 +844,7 @@ const e03: Experiment = {
           { x: Math.min(xMax, m.t50), y: 0.5 * p.amp, color: PAL.surge, label: `t₂ = ${fmt(m.t2, 1)} µs` },
         ]}
         refs={[{ at: 0.5 * p.amp, label: `Semiamplitud 50 % (${fmt(0.5 * p.amp, 0)} kV)`, color: PAL.surge }]}
-        caption={`Medición IEC 60060-1: frente t₁ = 1,67·(t₉₀ − t₃₀) = ${fmt(m.t1, 2)} µs · cola t₂ = ${fmt(m.t2, 2)} µs · origen virtual t₀ = ${fmt(m.t0, 2)} µs.`}
+        caption={`Frente convencional t₁ = 1,67·(t₉₀ − t₃₀) = ${fmt(m.t1, 2)} µs · cola t₂ = ${fmt(m.t2, 2)} µs · origen virtual t₀ = ${fmt(m.t0, 2)} µs.`}
       />
     );
   },

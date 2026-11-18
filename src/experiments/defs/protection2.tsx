@@ -5,370 +5,328 @@ import {
   cfoFromInsulators,
   cfoRequired,
   coronaInception,
-  correctTo20,
   creepageRequired,
-  dar,
-  effectiveProtection,
   fmt,
-  insulationCurrents,
-  insulationResistance,
   insulatorsFromCfo,
   linspace,
-  logspace,
   peekLoss,
-  piIndex,
-  protectionMargin,
-  tovCapability,
-  tovEquivalent,
-  ucMin,
 } from '../../lib/num';
-import { PAL, arrow, circle, dimension, electricArc, environment, glow, groundSymbol, insulatorString, latticeTower, line, pill, powerTransformer, sceneHeader, scopeScreen, soilCutaway, stormCloud, surgeArrester, technician, text } from '../../lib/draw';
+import { PAL, arrow, circle, electricArc, environment, glow, groundSymbol, insulatorString, latticeTower, line, pill, powerTransformer, sceneHeader, soilCutaway, stormCloud, surgeArrester, technician, text } from '../../lib/draw';
 import { BarComparisonPlot, Plot, SceneCanvas } from '../../components/ui';
-import type { Experiment, Params } from '../types';
+import type { Experiment } from '../types';
 
 /* =============================== e16 =============================== */
 
 const e16: Experiment = {
   id: 'e16',
   topicId: 11,
-  contextLabel: 'Bahía de entrada de subestación',
-  title: 'Pararrayos ZnO: cinco verificaciones a la vez',
-  tagline: 'U_c, TOV, U_r, tensión residual, distancia al equipo y margen frente al BIL',
-  why: 'Seleccionar un descargador como se hace en un proyecto real: varias condiciones simultáneas, no una sola cifra.',
+  contextLabel: 'Niveles de aislamiento IEC 71-1',
+  title: 'Coordinación IEC 71-1: del descargador al BIL',
+  tagline: 'BIL = Kᵢ·NPR → BIL_n normalizado → BSL = K·BIL_n → K_b = BSL/NPM ≥ K_m',
+  why: 'Ejecutar el procedimiento completo de la lámina 17: obtener los niveles del descargador, normalizar el BIL y verificar la exigencia de maniobras antes de especificar.',
   params: [
     {
-      id: 'um',
-      group: 'Red y descargador',
-      label: 'Tensión máxima del sistema (Uₘ)',
-      unit: 'kV',
-      min: 72.5,
-      max: 500,
-      step: 0.5,
-      def: 245,
+      id: 'npr',
+      group: 'Descargador (datos de catálogo)',
+      label: 'Nivel de protección ante rayo (NPR)',
+      unit: 'kV cresta',
+      min: 400,
+      max: 1400,
+      step: 25,
+      def: 600,
+      help: 'Las láminas no fijan valores: son datos del descargador real. 600 kV es un valor ilustrativo.',
     },
     {
-      id: 'uc',
-      group: 'Red y descargador',
-      label: 'Tensión continua del ZnO (U_c)',
-      unit: 'kV eficaces',
-      min: 60,
-      max: 300,
-      step: 1,
-      def: 150,
-      help: 'Debe aguantar las 24 h sin calentarse ni envejecer.',
-    },
-    {
-      id: 'ur',
-      group: 'Red y descargador',
-      label: 'Tensión asignada del catálogo (U_r)',
-      unit: 'kV eficaces',
-      min: 60,
-      max: 360,
-      step: 1,
-      def: 180,
-    },
-    {
-      id: 'ures',
-      group: 'Red y descargador',
-      label: 'Tensión residual U_res (onda 8/20 µs)',
+      id: 'npm',
+      group: 'Descargador (datos de catálogo)',
+      label: 'Nivel de protección ante maniobra (NPM)',
       unit: 'kV cresta',
       min: 300,
       max: 1200,
-      step: 5,
-      def: 600,
-      help: 'Techo de voltaje en los BORNES del descargador, no en el transformador.',
+      step: 25,
+      def: 500,
+      help: 'Análogo al NPR pero para el frente lento de maniobra (2–20 kHz, lámina 5). Valor ilustrativo.',
     },
     {
-      id: 'tovPu',
-      group: 'Sobretensión temporal (falla)',
-      label: 'TOV durante la falla',
-      unit: 'p.u. de U_f',
-      min: 1,
-      max: 1.8,
+      id: 'ki',
+      group: 'Factores de seguridad',
+      label: 'K_i (relacione BIL y NPR)',
+      min: 1.2,
+      max: 1.4,
       step: 0.01,
       def: 1.25,
       decimals: 2,
+      help: 'Rango 1,2–1,4; valor común 1,25; para niveles < 52 kV se usa 1,4 (lámina 16).',
     },
     {
-      id: 'tovDur',
-      group: 'Sobretensión temporal (falla)',
-      label: 'Duración de la TOV',
-      unit: 's',
-      min: 0.1,
-      max: 10,
-      step: 0.1,
-      def: 1,
-      decimals: 1,
-    },
-    {
-      id: 'cap1s',
-      group: 'Sobretensión temporal (falla)',
-      label: 'Capacidad TOV del catálogo a 1 s',
-      unit: 'kV eficaces',
-      min: 100,
-      max: 350,
-      step: 1,
-      def: 195,
-    },
-    {
-      id: 'd',
-      group: 'Conexión física al transformador',
-      label: 'Distancia descargador → equipo',
-      unit: 'm',
-      min: 0,
-      max: 30,
-      step: 0.5,
-      def: 6,
-      decimals: 1,
-      help: 'Cada metro de cable de conexión suma L_c·di/dt kilovoltios.',
-    },
-    {
-      id: 'lc',
-      group: 'Conexión física al transformador',
-      label: 'Inductancia del cable de conexión',
-      unit: 'µH/m',
-      min: 0,
-      max: 2,
-      step: 0.05,
-      def: 1,
+      id: 'km',
+      group: 'Factores de seguridad',
+      label: 'K_m (relaciona BSL y NPM)',
+      min: 1.05,
+      max: 1.3,
+      step: 0.01,
+      def: 1.15,
       decimals: 2,
+      help: 'Valor común 1,15 (lámina 16).',
     },
     {
-      id: 'didt',
-      group: 'Conexión física al transformador',
-      label: 'Pendiente de corriente del rayo',
-      unit: 'kA/µs',
-      min: 2,
-      max: 30,
-      step: 0.5,
-      def: 10,
-      decimals: 1,
+      id: 'k',
+      group: 'Equipo',
+      label: 'K = BSL / BIL',
+      min: 0,
+      max: 1,
+      step: 1,
+      def: 0,
+      options: [
+        { value: 0, label: 'Aire · K = 0,75' },
+        { value: 1, label: 'Aceite · K = 0,83' },
+      ],
+      help: '0,83 para equipos aislados en aceite; 0,75 para equipos aislados en aire (lámina 15).',
     },
     {
-      id: 'bil',
-      group: 'Equipo protegido',
-      label: 'BIL del transformador',
+      id: 'biln',
+      group: 'Selección',
+      label: 'BIL normalizado elegido (BIL_n)',
       unit: 'kV cresta',
       min: 550,
-      max: 1800,
-      step: 10,
-      def: 1050,
+      max: 1550,
+      step: 25,
+      def: 750,
+      help: 'Se elige de la serie normalizada vigente ≥ BIL (la serie no aparece en las láminas; aquí es un deslizador ilustrativo).',
     },
   ],
   presets: [
     {
-      id: 'curso',
-      label: 'Ejemplo del curso (U_res 600 kV + 60 kV)',
-      note: 'U_equipo = 660 kV y BIL = 1.050 kV → margen M = 59,1 %. Las 4 verificaciones quedan en verde.',
-      values: { um: 245, uc: 150, ur: 180, ures: 600, tovPu: 1.25, tovDur: 1, cap1s: 195, d: 6, lc: 1, didt: 10, bil: 1050 },
+      id: 'partida',
+      label: 'Punto de partida (falla en maniobras)',
+      note: 'NPR = 600 → BIL = 1,25 × 600 = 750 kV. Con BIL_n = 750 y K = 0,75 (aire): BSL = 562,5 y K_b = 1,125 < 1,15. Hay que incrementar BIL_n.',
+      values: { npr: 600, npm: 500, ki: 1.25, km: 1.15, k: 0, biln: 750 },
     },
     {
-      id: 'cerca',
-      label: 'Descargador a 1 m del transformador',
-      note: 'Solo suma 10 kV inductivos → U_equipo = 610 kV y el margen supera 70 %.',
-      values: { um: 245, uc: 150, ur: 180, ures: 600, tovPu: 1.25, tovDur: 1, cap1s: 195, d: 1, lc: 1, didt: 10, bil: 1050 },
+      id: 'aceite',
+      label: 'Equipo en aceite (K = 0,83)',
+      note: 'Con el mismo BIL_n = 750, en aceite BSL = 622,5 → K_b = 1,245 ≥ 1,15: se especifica BIL.',
+      values: { npr: 600, npm: 500, ki: 1.25, km: 1.15, k: 1, biln: 750 },
     },
     {
-      id: 'tov10',
-      label: 'TOV de 10 s (más exigente)',
-      note: 'La capacidad del catálogo baja con la duración; revisa la curva TOV antes de elegir U_r.',
-      values: { um: 245, uc: 150, ur: 180, ures: 600, tovPu: 1.25, tovDur: 10, cap1s: 195, d: 6, lc: 1, didt: 10, bil: 1050 },
-    },
-    {
-      id: 'bajo',
-      label: 'Descargador con U_res alta (750 kV)',
-      note: 'Aunque U_c y TOV estén bien, el margen cae por debajo de 20 %: el transformador queda desprotegido.',
-      values: { um: 245, uc: 150, ur: 180, ures: 750, tovPu: 1.25, tovDur: 1, cap1s: 195, d: 6, lc: 1, didt: 10, bil: 1050 },
+      id: 'npr900',
+      label: 'Descargador mayor (NPR = 900, NPM = 700)',
+      note: 'BIL = 1,25 × 900 = 1.125 kV; BIL_n = 1.150 → BSL = 862,5 → K_b = 1,232 ≥ 1,15.',
+      values: { npr: 900, npm: 700, ki: 1.25, km: 1.15, k: 0, biln: 1150 },
     },
   ],
   compute: (p) => {
-    const uf = p.um / Math.sqrt(3);
-    const ucReq = ucMin(p.um, true);
-    const uTov = p.tovPu * uf;
-    const ueq = tovEquivalent(uTov, p.tovDur);
-    const capAtDur = tovCapability(p.cap1s, p.tovDur);
-    const urMin = 1.05 * ueq;
-    const uEff = effectiveProtection(p.ures, p.d, p.lc, p.didt);
-    const margin = protectionMargin(p.bil, uEff);
-    const extra = p.lc * p.d * p.didt;
-    const okUc = p.uc >= ucReq ? 1 : 0;
-    const okTov = ueq <= capAtDur ? 1 : 0;
-    const okUr = p.ur >= urMin ? 1 : 0;
-    const okMargin = margin >= 20 ? 1 : 0;
-    return { uf, ucReq, uTov, ueq, capAtDur, urMin, uEff, extra, margin, okUc, okTov, okUr, okMargin, all: okUc * okTov * okUr * okMargin };
+    const k = p.k === 0 ? 0.75 : 0.83;
+    const bil = p.ki * p.npr;
+    const bilOk = p.biln >= bil - 1e-9 ? 1 : 0;
+    const bsl = k * p.biln;
+    const kb = bsl / Math.max(1e-9, p.npm);
+    const kbOk = kb >= p.km ? 1 : 0;
+    const especificar = bilOk === 1 && kbOk === 1 ? 1 : 0;
+    return { k, bil, bilOk, bsl, kb, kbOk, especificar };
   },
   liveStatus: (p, d) => ({
-    tone: d.all ? 'ok' : 'bad',
-    badge: d.all ? `✓ DESCARGADOR ADECUADO · M = ${fmt(d.margin, 1)} %` : `✕ REVISAR SELECCIÓN · M = ${fmt(d.margin, 1)} %`,
-    message: d.all
-      ? `El transformador ve ${fmt(d.uEff, 0)} kV (U_res ${fmt(d.uEff - d.extra, 0)} + ${fmt(d.extra, 0)} de conexiones) frente a un BIL de ${fmt(p.bil, 0)} kV: las 4 verificaciones pasan.`
-      : `Hay al menos una verificación en rojo. U_equipo = ${fmt(d.uEff, 0)} kV, TOV equivalente ${fmt(d.ueq, 1)} kV y U_c mínima ${fmt(d.ucReq, 1)} kV.`,
+    tone: d.especificar ? 'ok' : 'bad',
+    badge: d.especificar ? `✓ BIL ESPECIFICADO: ${fmt(p.biln, 0)} kV` : p.biln < d.bil ? '✕ BIL_n < BIL' : '✕ INCREMENTAR BIL_n',
+    message: d.especificar
+      ? `BIL_n = ${fmt(p.biln, 0)} kV ≥ BIL = ${fmt(d.bil, 0)} kV y K_b = ${fmt(d.kb, 3)} ≥ K_m = ${fmt(p.km, 2)}: el flujo termina en «ESPECIFICAR BIL» (lámina 17).`
+      : p.biln < d.bil
+        ? `BIL_n = ${fmt(p.biln, 0)} kV es menor que BIL = K_i·NPR = ${fmt(d.bil, 0)} kV: primero normaliza BIL_n ≥ BIL.`
+        : `K_b = BSL/NPM = ${fmt(d.bsl, 0)}/${fmt(p.npm, 0)} = ${fmt(d.kb, 3)} < K_m = ${fmt(p.km, 2)}: el lazo «INCREMENTAR BIL_n» de la lámina 17 se repite hasta alcanzar K_b ≥ K_m.`,
   }),
   readings: (d, p) => [
+    { label: 'NPR y NPM del descargador', value: `${fmt(p.npr, 0)} / ${fmt(p.npm, 0)} kV cresta`, sub: 'datos de catálogo (ilustrativos)' },
+    { label: 'BIL = K_i · NPR', value: `${fmt(d.bil, 0)} kV cresta`, sub: `${fmt(p.ki, 2)} × ${fmt(p.npr, 0)} kV`, tone: 'neutral' },
     {
-      label: 'U_c mínima exigida',
-      value: `${fmt(d.ucReq, 1)} kV eficaces`,
-      sub: `1,05·Uₘ/√3 (U_f = ${fmt(d.uf, 1)} kV)`,
-      tone: d.okUc ? 'ok' : 'bad',
+      label: 'BIL normalizado BIL_n',
+      value: `${fmt(p.biln, 0)} kV cresta`,
+      sub: d.bilOk ? '≥ BIL: válido' : '< BIL: elige uno mayor',
+      tone: d.bilOk ? 'ok' : 'bad',
+    },
+    { label: 'BSL = K · BIL_n', value: `${fmt(d.bsl, 1)} kV cresta`, sub: `K = ${d.k === 0.75 ? '0,75 (aire)' : '0,83 (aceite)'}` },
+    {
+      label: 'K_b = BSL / NPM',
+      value: fmt(d.kb, 3),
+      sub: `≥ K_m = ${fmt(p.km, 2)} ?`,
+      tone: d.kbOk ? 'ok' : 'bad',
     },
     {
-      label: 'TOV equivalente a 10 s',
-      value: `${fmt(d.ueq, 1)} kV eficaces`,
-      sub: `${fmt(p.tovPu, 2)}·U_f durante ${fmt(p.tovDur, 1)} s`,
-      tone: d.okTov ? 'ok' : 'bad',
-    },
-    {
-      label: 'Capacidad del catálogo',
-      value: `${fmt(d.capAtDur, 1)} kV eficaces`,
-      sub: 'a la MISMA duración de la TOV',
-      tone: d.okTov ? 'ok' : 'bad',
-    },
-    { label: 'U_r mínima requerida', value: `${fmt(d.urMin, 1)} kV eficaces`, sub: '1,05·U_eq', tone: d.okUr ? 'ok' : 'bad' },
-    {
-      label: 'Voltaje en el transformador',
-      value: `${fmt(d.uEff, 1)} kV cresta`,
-      sub: `${fmt(p.ures, 0)} + ${fmt(d.extra, 0)} kV (L_c·d·di/dt)`,
-      tone: 'warn',
-    },
-    {
-      label: 'Margen de protección',
-      value: `${fmt(d.margin, 1)} %`,
-      sub: `BIL ${fmt(p.bil, 0)} / U_equipo ${fmt(d.uEff, 0)}`,
-      tone: d.okMargin ? 'ok' : 'bad',
+      label: 'Veredicto del flujo',
+      value: d.especificar ? 'ESPECIFICAR BIL' : 'INCREMENTAR BIL_n',
+      sub: 'ramas del diagrama de la lámina 17',
+      tone: d.especificar ? 'ok' : 'bad',
     },
   ],
   equations: (p, d) => [
-    `U_c ≥ 1,05·Uₘ/√3 = 1,05 × ${fmt(d.uf, 1)} = ${fmt(d.ucReq, 1)} kV eficaces (elegido ${fmt(p.uc, 0)} kV)`,
-    `U_TOV = ${fmt(p.tovPu, 2)} × ${fmt(d.uf, 1)} = ${fmt(d.uTov, 1)} kV · U_eq = U_TOV·(t/10)^0,02 = ${fmt(d.ueq, 1)} kV`,
-    `U_r ≥ 1,05·U_eq = ${fmt(d.urMin, 1)} kV · capacidad(t) = ${fmt(p.cap1s, 0)}·(1/t)^0,02 = ${fmt(d.capAtDur, 1)} kV`,
-    `U_equipo = U_res + L_c·d·di/dt = ${fmt(p.ures, 0)} + ${fmt(p.lc, 2)}×${fmt(p.d, 1)}×${fmt(p.didt, 1)} = ${fmt(d.uEff, 1)} kV`,
-    `M = (BIL/U_equipo − 1)·100 = (${fmt(p.bil, 0)}/${fmt(d.uEff, 0)} − 1)·100 = ${fmt(d.margin, 1)} %`,
+    `1 · NPR = ${fmt(p.npr, 0)} kV · NPM = ${fmt(p.npm, 0)} kV (datos del descargador)`,
+    `2 · K_i = ${fmt(p.ki, 2)} · K_m = ${fmt(p.km, 2)}`,
+    `3 · BIL = K_i × NPR = ${fmt(p.ki, 2)} × ${fmt(p.npr, 0)} = ${fmt(d.bil, 0)} kV`,
+    `4 · BIL_n = ${fmt(p.biln, 0)} kV ${d.bilOk ? '≥' : '<'} BIL`,
+    `5 · BSL = K × BIL_n = ${d.k === 0.75 ? '0,75' : '0,83'} × ${fmt(p.biln, 0)} = ${fmt(d.bsl, 1)} kV`,
+    `6 · K_b = BSL / NPM = ${fmt(d.bsl, 1)} / ${fmt(p.npm, 0)} = ${fmt(d.kb, 3)}  →  ${d.kbOk ? '≥' : '<'} K_m (${fmt(p.km, 2)})`,
+    `7 · ${d.especificar ? 'K_b ≥ K_m: ESPECIFICAR BIL = BIL_n' : 'K_b < K_m: INCREMENTAR BIL_n y repetir desde el paso 5'}`,
   ],
-  checks: (p, d) => [
-    { label: 'U_c suficiente para operación continua', ok: d.okUc === 1, detail: `${fmt(p.uc, 0)} ≥ ${fmt(d.ucReq, 1)} kV` },
-    { label: 'TOV equivalente cabe en la curva del catálogo', ok: d.okTov === 1, detail: `${fmt(d.ueq, 1)} ≤ ${fmt(d.capAtDur, 1)} kV` },
-    { label: 'U_r cubre la TOV con 5 % de margen', ok: d.okUr === 1, detail: `${fmt(p.ur, 0)} ≥ ${fmt(d.urMin, 1)} kV` },
-    { label: 'Margen de protección ≥ 20 %', ok: d.okMargin === 1, detail: `${fmt(d.margin, 1)} %` },
-    { label: 'Se comparan crestas con crestas', ok: true, detail: 'impulso 8/20 µs con BIL 1,2/50 µs' },
+  checks: (_p, d) => [
+    { label: 'Los niveles van cresta con cresta', ok: true, detail: 'BIL, BSL, NPM y NPR son picos; nada en kV eficaces aquí' },
+    { label: 'K se eligió según el medio aislante del equipo', ok: true, detail: d.k === 0.75 ? '0,75 aire' : '0,83 aceite' },
+    { label: 'BIL_n ≥ BIL', ok: d.bilOk === 1, detail: `${fmt(d.bil, 0)} kV` },
+    { label: 'K_b ≥ K_m', ok: d.kbOk === 1, detail: `K_b = ${fmt(d.kb, 3)} vs K_m = objetivo` },
   ],
   goals: [
     {
       id: 'g1',
       kind: 'exploracion',
-      label: 'Reproduce el ejemplo del curso: margen ≈ 59,1 % con U_res 600 kV y 60 kV de conexión',
-      tip: 'Pulsa «Ejemplo del curso (U_res 600 kV + 60 kV)».',
-      test: (_p, d) => Math.abs(d.margin - 59.09) < 0.4 && d.all === 1,
-      detail: (_p, d) => `M = ${fmt(d.margin, 1)} % · U_equipo = ${fmt(d.uEff, 0)} kV`,
+      label: 'Incrementa BIL_n hasta que K_b ≥ K_m (sin pasarte: 775 kV basta)',
+      tip: 'Pulsa «Punto de partida» y sube BIL_n de 750 a 775 kV.',
+      test: (_p, d) => d.especificar === 1 && _p.biln <= 775,
+      detail: (_p, d) => `BIL_n = ${fmt(_p.biln, 0)} kV · K_b = ${fmt(d.kb, 3)}`,
     },
     {
       id: 'g2',
-      label: 'Acerca el descargador a 1 m y comprueba que el margen supera el 70 %',
-      tip: 'Pulsa «Descargador a 1 m del transformador» o baja d a 1 m.',
-      test: (p, d) => p.d <= 1.01 && d.margin >= 70 && d.all === 1,
-      detail: (p, d) => `d = ${fmt(p.d, 1)} m → M = ${fmt(d.margin, 1)} %`,
+      kind: 'exploracion',
+      label: 'Cambia el equipo a aceite (K = 0,83) y observa que BSL crece con el mismo BIL_n',
+      tip: 'Pulsa «Equipo en aceite (K = 0,83)».',
+      test: (_p, d) => d.k === 0.83 && d.kbOk === 1,
+      detail: (_p, d) => `BSL = ${fmt(d.bsl, 1)} kV · K_b = ${fmt(d.kb, 3)}`,
     },
   ],
+  quiz: {
+    question: 'Tras calcular BIL = K_i·NPR, ¿qué falta para especificar el BIL del equipo?',
+    options: [
+      { id: 'a', label: 'Convertirlo a kV eficaces y dar por terminada la selección.' },
+      { id: 'b', label: 'Normalizar BIL_n ≥ BIL, calcular BSL = K·BIL_n y exigir K_b = BSL/NPM ≥ K_m; si no se cumple, incrementar BIL_n (lazo de la lámina 17).' },
+      { id: 'c', label: 'Reducir el NPR del descargador hasta que BIL ≤ 500 kV.' },
+      { id: 'd', label: 'Usar K = 0,83 sin importar el medio aislante del equipo.' },
+    ],
+    correct: 'b',
+    explanation:
+      'La lámina 17 muestra que el procedimiento no termina en BIL = K_i·NPR: BIL se normaliza a BIL_n ≥ BIL, se obtiene BSL = K·BIL_n con K = 0,75 (aire) o 0,83 (aceite) y se verifica K_b = BSL/NPM ≥ K_m = 1,15. Si la desigualdad falla, el lazo «INCREMENTAR BIL_n» se repite hasta que se cumple; solo entonces se especifica el BIL.',
+  },
   learn: {
     analogy:
-      'El pararrayos es la válvula de seguridad de una olla a presión: aguanta cerrada la presión diaria (U_c), tolera hervores breves (TOV) y se abre al instante ante el pico (U_res). Si la válvula queda al final de un tubo largo (distancia d), la olla igual sufre sobrepresión.',
+      'Es comprar zapatos en la talla comercial: 27,3 cm no la vende la tienda; llevas la talla normalizada siguiente. Y antes de salir, compruebas que el ajuste (maniobra) también te queda, no solo el largo de fábrica (rayo).',
     phenomenon:
-      'Un descargador de ZnO conduce poquísimo a tensión normal y limita la tensión durante un transitorio. La tensión residual se mide en sus bornes; el transformador ve además la caída inductiva de los cables de conexión.',
+      'El descargador limita la tensión que llega al equipo, pero el aislamiento se especifica en niveles normalizados. IEC 71-1 encadena cuatro comprobaciones cresta con cresta: BIL cubre el rayo con holgura K_i, BIL_n existe en la serie normalizada, BSL cubre la maniobra y K_b ≥ K_m lo confirma.',
     objective:
-      'Verificar U_c, TOV, U_r, U_res y margen M, y explicar por qué la ubicación y las conexiones cambian el nivel real de protección.',
+      'Recorrer el diagrama de la lámina 17, reconocer qué falla cuando K_b < K_m y decidir el incremento correcto de BIL_n.',
     watch: [
-      'Aleja el descargador del transformador con el control d: la cota ámbar crece y la barra «voltaje en el equipo» sube.',
-      'Cambia la duración de la TOV: en la gráfica, el punto de operación se mueve sobre una curva de capacidad que cae con el tiempo.',
-      'Pulsa «U_res alta (750 kV)»: U_c y TOV siguen bien, pero el margen cae y la selección se rechaza.',
+      'En la escena, el diagrama se enciende etapa por etapa; el rombo K_b ≥ K_m cambia de verde a rojo según el deslizador BIL_n.',
+      'En la gráfica, la recta K_b(BIL_n) cruza a K_m al llegar a 775 kV; antes de ese punto no se puede especificar.',
+      'Cambia K entre aire (0,75) y aceite (0,83): con el mismo BIL_n, en aceite el margen de maniobra es mayor.',
     ],
     misconception:
-      'Comparar U_res directamente con el BIL olvidando las conexiones, o creer que la corriente nominal de descarga resume toda la capacidad energética.',
-    model: 'TOV equivalente según IEC 60099-5 con m_d = 0,02 y suma aditiva conservadora L·d·di/dt. La evaluación real exige curvas de fabricante y ondas viajeras.',
+      'Especificar BIL = K_i·NPR sin normalizar ni verificar maniobra. El rayo puede estar cubierto y la maniobra, no: por eso el lazo de la lámina 17 es obligatorio.',
+    model: 'Flujo de la lámina 17 de Sobretensiones (pp. 14–17): NPR/NPM → K_i, K_m → BIL → BIL_n ≥ BIL → BSL = K·BIL_n → K_b ≥ K_m. Las láminas no fijan valores numéricos ni la serie normalizada: NPR/NPM y la serie son ilustrativos.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'pararrayos', 'velasco', 'iec60099'],
-  scene: ({ p, d, t }) => (
-    <SceneCanvas
-      legend={[
-        { color: PAL.surge, label: 'Pararrayos de ZnO drenando el rayo' },
-        { color: PAL.phase, label: 'Línea de 245 kV' },
-        { color: d.okMargin ? PAL.ok : PAL.bad, label: `Voltaje en el equipo ${fmt(d.uEff, 0)} kV` },
-      ]}
-      draw={(ctx, w, h) => {
-        environment(ctx, w, h, { mood: 'day', groundY: h * 0.84, mountains: false });
-        soilCutaway(ctx, 0, h * 0.84, w, h * 0.16, { layers: 2 });
-        sceneHeader(ctx, 'Bahía de entrada de la subestación', `BIL ${fmt(p.bil, 0)} kV · U_res ${fmt(p.ures, 0)} kV · d = ${fmt(p.d, 1)} m`);
-
-        const gy = h * 0.84;
-        const fy = h * 0.2;
-        line(ctx, w * 0.06, fy, w * 0.94, fy, { color: PAL.phase, width: 3 });
-        text(ctx, `Red Uₘ = ${fmt(p.um, 0)} kV`, w * 0.06, fy - 16, { size: 10, color: PAL.phase, mono: true });
-
-        const ax = w * 0.34;
-        surgeArrester(ctx, ax, fy, gy, { active: true, t });
-        groundSymbol(ctx, ax, gy + 2, 10, PAL.copper);
-        pill(ctx, `U_c ${fmt(p.uc, 0)} · U_r ${fmt(p.ur, 0)} kV`, ax, gy - 12, { color: PAL.surge, align: 'center', mono: true, size: 9.5 });
-
-        const tx = Math.min(w * 0.88, ax + 30 + p.d * w * 0.017);
-        const trafo = powerTransformer(ctx, tx, gy, w * 0.17, h * 0.26, {
-          alert: !d.okMargin,
-          label: `BIL ${fmt(p.bil, 0)} kV`,
-        });
-        line(ctx, ax, fy, trafo.bushingX, fy, { color: PAL.phase, width: 2.2 });
-        line(ctx, trafo.bushingX, fy, trafo.bushingX, trafo.bushingY, { color: PAL.phase, width: 2 });
-        dimension(ctx, ax, fy - 28, trafo.bushingX, fy - 28, `d = ${fmt(p.d, 1)} m (+${fmt(d.extra, 0)} kV)`, PAL.warn);
-
-        // Pulso de rayo entrando y recorte en bornes del ZnO
-        const u = (t * 0.55) % 1;
-        const px = w * 0.06 + u * (ax - w * 0.06);
-        circle(ctx, px, fy, 4.5, { fill: PAL.surgeBright, stroke: '#FFFFFF', width: 1.4 });
-        electricArc(ctx, px + 4, fy - 8, ax, fy - 2, t * 5, PAL.surge, 1.4);
-        glow(ctx, ax, fy + 14, 20, PAL.surge, 0.3);
-
-        // Panel de dos barras: U_res en bornes vs U_equipo
-        const bx = w * 0.56;
-        const by = h * 0.34;
-        const bw = w * 0.3;
-        const maxV = Math.max(p.bil, d.uEff) * 1.1;
-        const bar = (yy: number, label: string, val: number, col: string) => {
-          text(ctx, label, bx, yy - 9, { size: 9.5, color: PAL.inkSoft });
-          line(ctx, bx, yy, bx + bw, yy, { color: 'rgba(78,99,120,0.14)', width: 11, cap: 'butt' });
-          line(ctx, bx, yy, bx + bw * (val / maxV), yy, { color: col, width: 11, cap: 'butt' });
-          text(ctx, `${fmt(val, 0)} kV`, bx + bw + 6, yy, { size: 9.5, color: col, mono: true });
-        };
-        bar(by, 'U_res en bornes ZnO', p.ures, PAL.surge);
-        bar(by + 32, 'U_equipo (incluye conexión)', d.uEff, d.okMargin ? PAL.ok : PAL.bad);
-        bar(by + 64, 'BIL del transformador', p.bil, PAL.phase);
-        pill(ctx, d.okMargin ? `✓ MARGEN ${fmt(d.margin, 1)} %` : `✕ MARGEN ${fmt(d.margin, 1)} %`, bx, by + 100, {
-          color: d.okMargin ? PAL.ok : PAL.bad,
-          mono: true,
-        });
-      }}
-      footer={
-        <>
-          <strong>Observa la cota ámbar:</strong> el descargador recorta en sus propios bornes, pero el transformador recibe <strong>U_res + L_c·d·di/dt</strong>. Por eso se instala lo más cerca posible.
-        </>
-      }
-    />
-  ),
-  plot: ({ p, d }) => {
-    const pts: [number, number][] = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10].map((tt) => [tt, tovCapability(p.cap1s, tt)]);
+  sources: ['expo39'],
+  notes: ['Las láminas describen el procedimiento y los factores K, K_i y K_m; no dan ejemplos numéricos. NPR, NPM y la serie de BIL_n de esta escena son valores ilustrativos.'],
+  scene: ({ p, d }) => {
+    const stage = (ok: boolean | 'mid') => (ok === 'mid' ? '#F5B841' : ok ? '#0E9F6E' : '#D6362C');
+    const box = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, title: string, sub: string, color: string, active: boolean) => {
+      ctx.save();
+      ctx.fillStyle = active ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.55)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = active ? 2.4 : 1.3;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      text(ctx, title, x + 8, y + 16, { size: 9.5, weight: 800, color: '#17324F' });
+      text(ctx, sub, x + 8, y + 32, { size: 9.5, mono: true, color: '#17324F' });
+    };
     return (
-      <Plot
-        xDomain={[0.05, 10]}
-        yDomain={[100, 320]}
-        xLog
-        xLabel="Duración de la sobretensión TOV (s — escala logarítmica)"
-        yLabel="Tensión soportada TOV (kV eficaces)"
-        bands={[{ y1: 100, y2: d.ueq, color: 'rgba(13,138,89,0.08)', label: 'Por debajo de la TOV aplicada', textColor: '#0A6E47' }]}
-        series={[{ pts, color: PAL.surge, width: 2.4, label: 'Capacidad TOV del catálogo' }]}
-        refs={[{ at: d.ueq, label: `TOV equivalente ${fmt(d.ueq, 0)} kV`, color: PAL.bad }]}
-        markers={[
-          { x: p.tovDur, y: d.ueq, color: d.okTov ? PAL.ok : PAL.bad, label: 'TOV aplicada' },
-          { x: p.tovDur, y: d.capAtDur, color: PAL.warn, label: 'Capacidad', shape: 'ring' },
+      <SceneCanvas
+        legend={[
+          { color: PAL.okBright, label: 'Etapa satisfecha' },
+          { color: PAL.warnBright, label: 'Etapa en decisión' },
+          { color: PAL.badBright, label: 'Etapa que exige incrementar BIL_n' },
         ]}
-        caption="La capacidad TOV baja al aumentar la duración. La comparación debe hacerse a la MISMA duración, no con el valor de 1 s."
+        draw={(ctx, w, h) => {
+          environment(ctx, w, h, { mood: 'lab' });
+          sceneHeader(ctx, 'Flujo IEC 71-1 (lámina 17)', `BIL = ${fmt(d.bil, 0)} kV · BIL_n = ${fmt(p.biln, 0)} kV · K_b = ${fmt(d.kb, 3)}`);
+          const bw = Math.min(w * 0.2, 190);
+          const bh = 44;
+          const y1 = h * 0.2;
+          const y2 = h * 0.52;
+          const x1 = w * 0.05;
+          const x2 = x1 + bw + w * 0.045;
+          const x3 = x2 + bw + w * 0.045;
+          const x4 = x3 + bw + w * 0.045;
+          box(ctx, x1, y1, bw, bh, '1-2 · OBTENER NPR/NPM', `${fmt(p.npr, 0)} / ${fmt(p.npm, 0)} kV`, stage(true), true);
+          box(ctx, x2, y1, bw, bh, '2 · K_i y K_m', `${fmt(p.ki, 2)} / ${fmt(p.km, 2)}`, stage(true), true);
+          box(ctx, x3, y1, bw, bh, '3 · BIL = K_i·NPR', `${fmt(d.bil, 0)} kV`, stage(true), true);
+          box(ctx, x4, y1, bw, bh, '4 · BIL_n normalizado', `${fmt(p.biln, 0)} kV ≥ ${fmt(d.bil, 0)}`, stage(d.bilOk === 1), d.bilOk !== 1);
+          box(ctx, x4, y2, bw, bh, '5 · BSL = K·BIL_n', `${fmt(d.bsl, 1)} kV`, stage(d.bilOk === 1), true);
+          box(ctx, x3, y2, bw, bh, '6 · K_b = BSL/NPM', `${fmt(d.kb, 3)}`, stage(d.kb >= p.km), true);
+          // Rombo de decisión
+          const cx = x2 + bw / 2;
+          const cy = y2 + bh / 2;
+          const rw = bw * 0.78;
+          const rh = bh * 1.05;
+          ctx.save();
+          ctx.fillStyle = d.kb >= p.km ? 'rgba(14,159,110,0.16)' : 'rgba(214,54,44,0.14)';
+          ctx.strokeStyle = d.kb >= p.km ? '#0E9F6E' : '#D6362C';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - rh / 2);
+          ctx.lineTo(cx + rw / 2, cy);
+          ctx.lineTo(cx, cy + rh / 2);
+          ctx.lineTo(cx - rw / 2, cy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+          text(ctx, 'K_b ≥ K_m?', cx, cy + 3, { size: 11, weight: 800, align: 'center', color: '#17324F' });
+          // Caja final / lazo
+          const finalOk = d.especificar === 1;
+          box(ctx, x1, y2, bw, bh, finalOk ? '7 · ESPECIFICAR BIL' : '7 · INCREMENTAR BIL_n', finalOk ? `${fmt(p.biln, 0)} kV ✓` : 'repetir paso 5', stage(finalOk), !finalOk);
+          // Flechas
+          arrow(ctx, x1 + bw, y1 + bh / 2, x2, y1 + bh / 2, PAL.phase, 1.6);
+          arrow(ctx, x2 + bw, y1 + bh / 2, x3, y1 + bh / 2, PAL.phase, 1.6);
+          arrow(ctx, x3 + bw, y1 + bh / 2, x4, y1 + bh / 2, PAL.phase, 1.6);
+          arrow(ctx, x4 + bw / 2, y1 + bh, x4 + bw / 2, y2, PAL.phase, 1.6);
+          arrow(ctx, x4, y2 + bh / 2, x3 + bw, y2 + bh / 2, PAL.phase, 1.6);
+          arrow(ctx, x3, y2 + bh / 2, cx + rw / 2, cy, PAL.phase, 1.6);
+          arrow(ctx, cx - rw / 2, cy, x1 + bw, y2 + bh / 2, finalOk ? '#0E9F6E' : '#D6362C', 2);
+          text(ctx, d.kb >= p.km ? 'SÍ' : 'NO', cx - rw / 2 - 16, cy - 6, { size: 9.5, weight: 800, color: d.kb >= p.km ? '#0E9F6E' : '#D6362C' });
+          // Lazo de vuelta desde INCREMENTAR al paso 5
+          if (!finalOk) {
+            ctx.save();
+            ctx.strokeStyle = '#D6362C';
+            ctx.setLineDash([6, 5]);
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(x1 + bw / 2, y2 + bh);
+            ctx.lineTo(x1 + bw / 2, y2 + bh + h * 0.09);
+            ctx.lineTo(x4 + bw / 2, y2 + bh + h * 0.09);
+            ctx.lineTo(x4 + bw / 2, y2 + bh + 4);
+            ctx.stroke();
+            ctx.restore();
+          }
+          pill(ctx, `K_b = ${fmt(d.kb, 3)}`, w * 0.5, h * 0.12, { color: d.kb >= p.km ? PAL.okBright : PAL.badBright, align: 'center', mono: true, size: 12, dark: true });
+        }}
+        footer={
+          <>
+            <strong>El lazo importa:</strong> si el rombo dice «NO», no se especifica: se incrementa BIL_n y se recalcula BSL y K_b. Solo el camino «SÍ» termina en especificar el BIL.
+          </>
+        }
       />
     );
   },
+  plot: ({ p, d }) => (
+    <Plot
+      xDomain={[550, 1550]}
+      yDomain={[0.8, 2]}
+      xLabel="BIL normalizado BIL_n (kV cresta)"
+      yLabel="K_b = BSL / NPM"
+      series={[{ pts: Array.from({ length: 41 }, (_, i) => { const b = 550 + i * 25; return [b, ((p.k === 0 ? 0.75 : 0.83) * b) / Math.max(1e-9, p.npm)] as [number, number]; }), color: PAL.surge, width: 2.4, label: 'K_b(BIL_n)' }]}
+      refs={[{ at: p.km, label: `K_m = ${fmt(p.km, 2)}`, color: PAL.bad }]}
+      bands={[{ x1: d.bil, x2: 1550, color: 'rgba(13,138,89,0.07)', label: 'BIL_n ≥ BIL', textColor: '#0A6E47' }]}
+      markers={[{ x: p.biln, y: d.kb, color: d.especificar ? PAL.ok : PAL.bad, label: `BIL_n = ${fmt(p.biln, 0)}` }]}
+      caption="La recta sube con BIL_n. Mientras esté por debajo de K_m no se puede especificar: el lazo de la lámina 17 obliga a incrementar BIL_n."
+    />
+  ),
 };
 
 /* =============================== e17 =============================== */
@@ -608,10 +566,10 @@ const e17: Experiment = {
       'La parábola de pérdidas muestra la ley cuadrática: duplicar el exceso de voltaje cuadruplica la pérdida.',
     ],
     misconception:
-      'Usar Peek con U < U₀, o creer que cambiar el radio no cambia la incepción. En la versión 1 el control de haz no afectaba la fórmula; aquí r_eq modifica U₀ y las pérdidas.',
-    model: 'Incepción coaxial con E₀ = 21,1 kV/cm y pérdidas de Peek para buen tiempo. Lluvia, suciedad y geometría real pueden aumentar las pérdidas.',
+      'Usar Peek con U < U₀, o creer que cambiar el radio no cambia la incepción: r_eq modifica U₀ y las pérdidas.',
+    model: 'Incepción con E₀ = 21,1·δ·m kV/cm (adopción del curso; las láminas no fijan E₀) y pérdidas de Peek para buen tiempo (Expo 77, p. 58). Lluvia, suciedad y geometría real pueden aumentar las pérdidas.',
   },
-  sources: ['expo77', 'guion', 'slides', 'corona', 'ejercicios'],
+  sources: ['expo77'],
   scene: ({ p, d, t }) => {
     const intensity = clamp(d.over, 0, 1);
     return (
@@ -701,45 +659,44 @@ const e18: Experiment = {
   topicId: 11,
   contextLabel: 'Proyecto integral de 245 kV en Bogotá',
   title: 'Misión final: coordinar la línea completa',
-  tagline: 'Cadena, altitud, guarda, tierra y pararrayos: seis semáforos en verde a la vez',
+  tagline: 'Cadena, altitud, guarda, tierra y niveles IEC: cinco semáforos en verde a la vez',
   why: 'Integrar todos los criterios en una sola decisión y comprobar que una solución verde en un renglón no compensa un rojo en otro.',
   params: [
     { id: 'um', group: 'Red y sitio', label: 'Tensión máxima Uₘ', unit: 'kV', min: 72.5, max: 500, step: 0.5, def: 245 },
     { id: 'h', group: 'Red y sitio', label: 'Altitud del sitio', unit: 'm', min: 0, max: 4000, step: 10, def: 2640 },
-    { id: 'temp', group: 'Red y sitio', label: 'Temperatura', unit: '°C', min: 0, max: 35, step: 1, def: 20 },
+    { id: 'temp', group: 'Red y sitio', label: 'Temperatura', unit: '°C', min: 0, max: 35, step: 1, def: 14 },
     { id: 'kf', group: 'Cadena de aisladores', label: 'Coeficiente de fuga k_f', unit: 'mm/kV', min: 12, max: 35, step: 1, def: 25 },
     { id: 'fuga', group: 'Cadena de aisladores', label: 'Fuga por disco', unit: 'mm', min: 200, max: 450, step: 2, def: 292 },
     { id: 'paso', group: 'Cadena de aisladores', label: 'Paso de montaje', unit: 'm', min: 0.1, max: 0.2, step: 0.002, def: 0.146, decimals: 3 },
     { id: 'dh', group: 'Cable de guarda', label: 'Δh guarda–fase', unit: 'm', min: 2, max: 12, step: 0.1, def: 6, decimals: 1 },
-    { id: 'dx', group: 'Cable de guarda', label: 'Δx guarda–fase', unit: 'm', min: 0, max: 10, step: 0.1, def: 3, decimals: 1 },
-    { id: 'rt', group: 'Torre, rayo y tierra', label: 'Resistencia de tierra', unit: 'Ω', min: 1, max: 50, step: 0.5, def: 20, decimals: 1 },
+    { id: 'dx', group: 'Cable de guarda', label: 'Δx guarda–fase', unit: 'm', min: 0, max: 10, step: 0.1, def: 2.5, decimals: 1 },
+    { id: 'rt', group: 'Torre, rayo y tierra', label: 'Resistencia de tierra R_t', unit: 'Ω', min: 1, max: 50, step: 0.5, def: 20, decimals: 1 },
     { id: 'iRayo', group: 'Torre, rayo y tierra', label: 'Corriente de rayo de diseño', unit: 'kA', min: 10, max: 120, step: 1, def: 60 },
-    { id: 'didt', group: 'Torre, rayo y tierra', label: 'di/dt de diseño', unit: 'kA/µs', min: 5, max: 40, step: 1, def: 20 },
-    { id: 'kc', group: 'Torre, rayo y tierra', label: 'Acoplamiento guarda–fase', min: 0, max: 0.4, step: 0.01, def: 0.25, decimals: 2 },
-    { id: 'cfo', group: 'Torre, rayo y tierra', label: 'CFO de la cadena', unit: 'kV', min: 900, max: 1800, step: 10, def: 1400 },
-    { id: 'uc', group: 'Subestación', label: 'U_c del descargador', unit: 'kV eficaces', min: 80, max: 300, step: 1, def: 150 },
-    { id: 'ures', group: 'Subestación', label: 'U_res del descargador', unit: 'kV cresta', min: 350, max: 900, step: 5, def: 600 },
-    { id: 'bil', group: 'Subestación', label: 'BIL del equipo', unit: 'kV cresta', min: 650, max: 1800, step: 10, def: 1050 },
-    { id: 'dArr', group: 'Subestación', label: 'Distancia descargador–equipo', unit: 'm', min: 0, max: 20, step: 0.5, def: 6, decimals: 1 },
+    { id: 'didt', group: 'Torre, rayo y tierra', label: 'di/dt de diseño', unit: 'kA/µs', min: 5, max: 40, step: 1, def: 10 },
+    { id: 'npr', group: 'Transformador y niveles IEC', label: 'NPR del descargador', unit: 'kV cresta', min: 400, max: 1400, step: 25, def: 600 },
+    { id: 'npm', group: 'Transformador y niveles IEC', label: 'NPM del descargador', unit: 'kV cresta', min: 300, max: 1200, step: 25, def: 500 },
+    { id: 'ki', group: 'Transformador y niveles IEC', label: 'K_i', min: 1.2, max: 1.4, step: 0.01, def: 1.25, decimals: 2 },
+    { id: 'km', group: 'Transformador y niveles IEC', label: 'K_m', min: 1.05, max: 1.3, step: 0.01, def: 1.15, decimals: 2 },
+    { id: 'bil', group: 'Transformador y niveles IEC', label: 'BIL_n del equipo', unit: 'kV cresta', min: 550, max: 1550, step: 25, def: 1150 },
   ],
   presets: [
     {
       id: 'referencia',
       label: 'Proyecto coordinado (245 kV, 2.640 m)',
-      note: 'Caso de referencia con α ≈ 26,6°, R_t = 20 Ω y pararrayos a 6 m: las 6 verificaciones deben quedar en verde.',
-      values: { um: 245, h: 2640, temp: 20, kf: 25, fuga: 292, paso: 0.146, dh: 6, dx: 3, rt: 20, iRayo: 60, didt: 20, kc: 0.25, cfo: 1400, uc: 150, ures: 600, bil: 1050, dArr: 6 },
+      note: 'α ≈ 22,6° · cadena por fuga · V_torre limitada · BIL_n = 1.150 kV cubre rayo (BIL = 750 kV) y maniobra (K_b = 1,73).',
+      values: { um: 245, h: 2640, temp: 14, kf: 25, fuga: 292, paso: 0.146, dh: 6, dx: 2.5, rt: 20, iRayo: 60, didt: 10, npr: 600, npm: 500, ki: 1.25, km: 1.15, bil: 1150 },
     },
     {
       id: 'curso',
-      label: 'Geometría del ejemplo (38,7°)',
-      note: 'Solo cambia la guarda (Δh=5, Δx=4): α = 38,7° y el proyecto deja de estar coordinado aunque todo lo demás siga igual.',
-      values: { um: 245, h: 2640, temp: 20, kf: 25, fuga: 292, paso: 0.146, dh: 5, dx: 4, rt: 20, iRayo: 60, didt: 20, kc: 0.25, cfo: 1400, uc: 150, ures: 600, bil: 1050, dArr: 6 },
+      label: 'Geometría del ejemplo (Δh = 5, Δx = 4 → α = 38,7°)',
+      note: 'Solo cambia la guarda: α = 38,7° (ejemplo geométrico de la lámina 31). El diseño no se acepta con el α_obj = 25° de referencia (lámina 36).',
+      values: { um: 245, h: 2640, temp: 14, kf: 25, fuga: 292, paso: 0.146, dh: 5, dx: 4, rt: 20, iRayo: 60, didt: 10, npr: 600, npm: 500, ki: 1.25, km: 1.15, bil: 1150 },
     },
     {
       id: 'debil',
-      label: 'Tierra alta y descargador insuficiente',
-      note: 'R_t = 45 Ω, U_res = 760 kV y d = 12 m: fallan flameo inverso, U_c y margen. Aquí se ven varios semáforos rojos.',
-      values: { um: 245, h: 2640, temp: 20, kf: 25, fuga: 292, paso: 0.146, dh: 6, dx: 3, rt: 45, iRayo: 60, didt: 20, kc: 0.25, cfo: 1400, uc: 140, ures: 760, bil: 1050, dArr: 12 },
+      label: 'Tierra alta y BIL insuficiente',
+      note: 'R_t = 45 Ω (V_torre supera el CFO de la cadena) y BIL_n = 750 kV (K_b = 1,125 < 1,15): varios criterios en rojo.',
+      values: { um: 245, h: 2640, temp: 14, kf: 25, fuga: 292, paso: 0.146, dh: 6, dx: 2.5, rt: 45, iRayo: 60, didt: 10, npr: 600, npm: 500, ki: 1.25, km: 1.15, bil: 750 },
     },
   ],
   compute: (p) => {
@@ -753,105 +710,117 @@ const e18: Experiment = {
     const length = n * p.paso;
     const cfoString = cfoFromInsulators(n);
     const alpha = (Math.atan2(p.dx, p.dh) * 180) / Math.PI;
+    const rc = 10 * Math.pow(Math.max(1e-9, p.iRayo), 0.65);
     const vt = p.rt * p.iRayo + 1 * p.didt;
-    const vChain = vt * (1 - p.kc);
-    const ucReq = ucMin(p.um, true);
-    const uTov = 1.25 * uf;
-    const ueq = tovEquivalent(uTov, 1, 0.02);
-    const cap = tovCapability(195, 1, 0.02);
-    const uEff = effectiveProtection(p.ures, p.dArr, 1, 10);
-    const margin = protectionMargin(p.bil, uEff);
-    const marginOk = margin >= 20 ? 1 : 0;
+    const bilCalc = p.ki * p.npr;
+    const bilnOk = p.bil >= bilCalc - 1e-9 ? 1 : 0;
+    const bsl = 0.75 * p.bil; // K = 0,75 (equipo en aire, lámina 15)
+    const kb = bsl / Math.max(1e-9, p.npm);
+    const kbOk = kb >= p.km ? 1 : 0;
     const checks = {
       chain: cfoString >= cfoReq ? 1 : 0,
-      guard: alpha <= 30 ? 1 : 0,
-      ground: vChain < p.cfo ? 1 : 0,
-      uc: p.uc >= ucReq ? 1 : 0,
-      tov: ueq <= cap ? 1 : 0,
-      marginOk,
+      guard: alpha <= 25 ? 1 : 0,
+      ground: vt < cfoString ? 1 : 0,
+      bilnOk,
+      kbOk,
     };
     const all = Object.values(checks).reduce((a, b) => a * b, 1);
-    return { delta, uf, fugaReq, nFuga, cfoReq, nMan, n, length, cfoString, alpha, vt, vChain, ucReq, uTov, ueq, cap, uEff, margin, ...checks, all };
+    return { delta, uf, fugaReq, nFuga, cfoReq, nMan, n, length, cfoString, alpha, rc, vt, bilCalc, bsl, kb, ...checks, all };
   },
   liveStatus: (_p, d) => ({
     tone: d.all ? 'ok' : 'bad',
     badge: d.all ? '✓ PROYECTO COORDINADO' : '✕ PROYECTO NO COORDINADO',
     message: d.all
-      ? `Las 6 verificaciones pasan: cadena ${fmt(d.n, 0)} discos, α ${fmt(d.alpha, 1)}°, V_cadena ${fmt(d.vChain, 0)} kV < CFO ${fmt(d.cfoString, 0)} kV y margen ${fmt(d.margin, 1)} %.`
-      : `Al menos un criterio está en rojo. Un valor verde por separado no compensa otro en rojo: revisa la lista de verificaciones.`,
+      ? `Las 5 verificaciones pasan: cadena ${fmt(d.n, 0)} discos (CFO ${fmt(d.cfoString, 0)} kV), α = ${fmt(d.alpha, 1)}°, V_torre = ${fmt(d.vt, 0)} kV y K_b = ${fmt(d.kb, 3)}.`
+      : 'Al menos un criterio está en rojo. Un valor verde por separado no compensa otro en rojo: revisa la lista de verificaciones.',
   }),
   readings: (d, p) => [
-    { label: 'Altitud y densidad', value: `${fmt(p.h, 0)} m · δ = ${fmt(d.delta, 3)}`, sub: `T = ${fmt(p.temp, 0)} °C` },
+    { label: 'Altitud y densidad', value: `${fmt(p.h, 0)} m · δ = ${fmt(d.delta, 3)}`, sub: `T = ${fmt(p.temp, 0)} °C (δ de la lámina 38)` },
     { label: 'Cadena dimensionada', value: `${fmt(d.n, 0)} discos · ${fmt(d.length, 2)} m`, sub: `fuga ${fmt(d.nFuga, 0)} · maniobra ${fmt(d.nMan, 0)}` },
     {
       label: 'CFO instalado / requerido',
       value: `${fmt(d.cfoString, 0)} / ${fmt(d.cfoReq, 0)} kV`,
-      sub: 'maniobra corregida por altitud',
+      sub: 'maniobra corregida por altitud (÷ δ)',
       tone: d.chain ? 'ok' : 'bad',
     },
-    { label: 'Ángulo de guarda', value: `${fmt(d.alpha, 1)}°`, sub: 'referencia ≤ 30°', tone: d.guard ? 'ok' : 'bad' },
+    { label: 'Ángulo de guarda α', value: `${fmt(d.alpha, 1)}°`, sub: 'ref.: α_obj = 25° (ejemplo de la lámina 36)', tone: d.guard ? 'ok' : 'bad' },
     {
-      label: 'Tensión sobre cadena (rayo)',
-      value: `${fmt(d.vChain, 0)} kV`,
-      sub: `frente a CFO elegido ${fmt(p.cfo, 0)} kV`,
+      label: 'V_torre = R·i + L·di/dt',
+      value: `${fmt(d.vt, 0)} kV`,
+      sub: `frente a CFO instalado ${fmt(d.cfoString, 0)} kV (r_c ≈ ${fmt(d.rc, 0)} m, lámina 40)`,
       tone: d.ground ? 'ok' : 'bad',
     },
     {
-      label: 'Margen del descargador',
-      value: `${fmt(d.margin, 1)} %`,
-      sub: `U_equipo ${fmt(d.uEff, 0)} · BIL ${fmt(p.bil, 0)}`,
-      tone: d.marginOk ? 'ok' : 'bad',
+      label: 'BIL_n frente a BIL requerido',
+      value: `${fmt(p.bil, 0)} / ${fmt(d.bilCalc, 0)} kV`,
+      sub: 'BIL = K_i·NPR, BIL_n ≥ BIL',
+      tone: d.bilnOk ? 'ok' : 'bad',
     },
-    { label: 'Proyecto completo', value: d.all ? 'coordinado' : 'revisar', sub: d.all ? '6/6 verificaciones' : 'al menos una falla', tone: d.all ? 'ok' : 'bad' },
+    { label: 'K_b = BSL / NPM', value: fmt(d.kb, 3), sub: `BSL = 0,75·BIL_n · K_m = ${fmt(p.km, 2)}`, tone: d.kbOk ? 'ok' : 'bad' },
+    { label: 'Proyecto completo', value: d.all ? 'coordinado' : 'revisar', sub: d.all ? '5/5 verificaciones' : 'al menos una falla', tone: d.all ? 'ok' : 'bad' },
   ],
   equations: (p, d) => [
-    `L_f = ${fmt(p.kf, 0)} × ${fmt(p.um, 1)} = ${fmt(d.fugaReq, 0)} mm → N_fuga = ${fmt(d.nFuga, 0)}`,
-    `CFO_req = (1,15 × 2,5 × Û_f)/(1 − 1,3 × 0,06)/δ = ${fmt(d.cfoReq, 0)} kV → N_maniobra = ${fmt(d.nMan, 0)}`,
+    `L_f = ${fmt(p.kf, 0)} × ${fmt(p.um, 1)} = ${fmt(d.fugaReq, 0)} mm → N_fuga = ${fmt(d.nFuga, 0)} (actividad 06)`,
+    `CFO_req = (1,15 × 2,5 × Û_f)/(1 − 1,3 × 0,06) ÷ δ = ${fmt(d.cfoReq, 0)} kV → N_maniobra = ${fmt(d.nMan, 0)}`,
     `N = máx(${fmt(d.nFuga, 0)}, ${fmt(d.nMan, 0)}) = ${fmt(d.n, 0)} · L = ${fmt(d.n, 0)} × ${fmt(p.paso, 3)} = ${fmt(d.length, 2)} m`,
-    `α = arctan(${fmt(p.dx, 1)}/${fmt(p.dh, 1)}) = ${fmt(d.alpha, 1)}° · V_cadena = (${fmt(p.rt, 1)}×${fmt(p.iRayo, 0)} + ${fmt(p.didt, 0)})·(1 − ${fmt(p.kc, 2)}) = ${fmt(d.vChain, 0)} kV`,
-    `U_c ≥ 1,05·U_f = ${fmt(d.ucReq, 1)} kV · U_eq = ${fmt(d.ueq, 1)} ≤ ${fmt(d.cap, 1)} kV · M = (${fmt(p.bil, 0)}/${fmt(d.uEff, 0)} − 1)·100 = ${fmt(d.margin, 1)} %`,
+    `α = arctan(${fmt(p.dx, 1)}/${fmt(p.dh, 1)}) = ${fmt(d.alpha, 1)}° · V_torre = ${fmt(p.rt, 1)}×${fmt(p.iRayo, 0)} + 1×${fmt(p.didt, 0)} = ${fmt(d.vt, 0)} kV`,
+    `BIL = K_i×NPR = ${fmt(p.ki, 2)}×${fmt(p.npr, 0)} = ${fmt(d.bilCalc, 0)} kV · BIL_n = ${fmt(p.bil, 0)} ${d.bilnOk ? '≥' : '<'} BIL`,
+    `BSL = 0,75×${fmt(p.bil, 0)} = ${fmt(d.bsl, 1)} kV · K_b = BSL/NPM = ${fmt(d.kb, 3)} ${d.kbOk ? '≥' : '<'} K_m = ${fmt(p.km, 2)}`,
   ],
   checks: (p, d) => [
     { label: 'Cadena: CFO instalado ≥ CFO requerido', ok: d.chain === 1, detail: `${fmt(d.cfoString, 0)} ≥ ${fmt(d.cfoReq, 0)} kV` },
-    { label: 'Guarda: α ≤ 30°', ok: d.guard === 1, detail: `${fmt(d.alpha, 1)}°` },
-    { label: 'Tierra y rayo: V_cadena < CFO elegido', ok: d.ground === 1, detail: `${fmt(d.vChain, 0)} < ${fmt(p.cfo, 0)} kV` },
-    { label: 'Descargador: U_c ≥ 1,05·U_f', ok: d.uc === 1, detail: `${fmt(p.uc, 0)} ≥ ${fmt(d.ucReq, 1)} kV` },
-    { label: 'Descargador: TOV equivalente ≤ capacidad', ok: d.tov === 1, detail: `${fmt(d.ueq, 1)} ≤ ${fmt(d.cap, 1)} kV` },
-    { label: 'Equipo: margen ≥ 20 %', ok: d.marginOk === 1, detail: `${fmt(d.margin, 1)} %` },
+    { label: 'Guarda: α ≤ 25° (referencia de diseño)', ok: d.guard === 1, detail: `${fmt(d.alpha, 1)}° — las láminas no fijan un límite universal; α_obj = 25° es el del ejemplo de la lámina 36` },
+    { label: 'Tierra y rayo: V_torre < CFO instalado', ok: d.ground === 1, detail: `${fmt(d.vt, 0)} < ${fmt(d.cfoString, 0)} kV` },
+    { label: 'BIL_n ≥ BIL = K_i·NPR', ok: d.bilnOk === 1, detail: `${fmt(p.bil, 0)} ≥ ${fmt(d.bilCalc, 0)} kV` },
+    { label: 'K_b = BSL/NPM ≥ K_m', ok: d.kbOk === 1, detail: `K_b = ${fmt(d.kb, 3)} vs ${fmt(p.km, 2)}` },
+    { label: 'Las láminas no fijan umbral de α', ok: true, info: true, detail: 'informativo: 25° es el α_obj del ejemplo de la lámina 36; el ejemplo geométrico de la lámina 31 da 38,7°' },
   ],
   goals: [
     {
+      id: 'r1',
+      label: 'Guarda: α ≤ 25°',
+      tip: 'Acerca la fase a la vertical de la guarda: baja Δx (o usa «Proyecto coordinado»).',
+      test: (_p, d) => d.alpha <= 25,
+      detail: (_p, d) => `α = ${fmt(d.alpha, 1)}° (ref. lámina 36)`,
+    },
+    {
       id: 'g1',
-      label: 'Haz que las 6 verificaciones pasen (proyecto coordinado)',
-      tip: 'Pulsa «Proyecto coordinado (245 kV, 2.640 m)» o corrige uno por uno los semáforos rojos.',
-      test: (_p, d) => d.all === 1,
-      detail: (_p, d) => `6/6 · N = ${fmt(d.n, 0)} discos · M = ${fmt(d.margin, 0)} %`,
+      kind: 'exploracion',
+      label: 'Logra todo en verde manteniendo BIL_n ≤ 900 kV',
+      tip: 'Pulsa «Proyecto coordinado» y baja BIL_n a 900 kV (K_b = 1,35) o menos.',
+      test: (_p, d) => d.all === 1 && _p.bil <= 900,
+      detail: (_p, d) => `α = ${fmt(d.alpha, 1)}° · BIL_n = ${fmt(_p.bil, 0)} kV`,
     },
     {
       id: 'g2',
-      label: 'Logra el proyecto coordinado con α ≤ 25° y margen ≥ 40 %',
-      tip: 'Desde el proyecto coordinado, baja Δx a ~2,5 m (α ≈ 22,6°) y acerca el pararrayos a 1–2 m.',
-      test: (_p, d) => d.all === 1 && d.alpha <= 25 && d.margin >= 40,
-      detail: (_p, d) => `α = ${fmt(d.alpha, 1)}° · M = ${fmt(d.margin, 1)} %`,
+      kind: 'exploracion',
+      label: 'Deja K_b justo por encima de K_m (< K_m + 0,05)',
+      tip: 'Con BIL_n = 775 kV: BSL = 581,25 kV y K_b = 1,1625 (apenas ≥ 1,15).',
+      test: (_p, d) => d.all === 1 && d.kb >= _p.km && d.kb < _p.km + 0.05,
+      detail: (_p, d) => `K_b = ${fmt(d.kb, 3)}`,
     },
   ],
   learn: {
     analogy:
-      'Es el control técnico de un avión antes de despegar: motores, alas, tren, instrumentos, pista y clima. Que cinco luces estén en verde no autoriza el despegue si la sexta está en rojo.',
+      'Es el control técnico de un avión antes de despegar: motores, alas, tren, instrumentos y clima. Que cinco luces estén en verde no autoriza el despegue si la sexta está en rojo.',
     phenomenon:
-      'La coordinación de aislamiento no es la suma de componentes óptimos por separado: cadena, altitud, guarda, tierra y descargador se condicionan entre sí. Un solo criterio en rojo invalida el proyecto.',
+      'La coordinación de aislamiento no es la suma de componentes óptimos por separado: cadena, altitud, guarda, tierra y niveles del transformador se condicionan entre sí. Un solo criterio en rojo invalida el proyecto.',
     objective:
       'Ejecutar el ciclo completo de verificación y explicar por qué cambiar una pieza obliga a revisar las demás.',
     watch: [
       'La escena recorre la línea completa de la nube al transformador y colorea cada semáforo según su verificación.',
-      'El diagrama de barras compara esfuerzo (rojo) contra capacidad soportada (verde) en tres frentes: maniobra, rayo y equipo.',
-      'Cambia solo Δx o solo dArr: observa cuántas comprobaciones se mueven a la vez.',
+      'El diagrama de barras compara esfuerzo (rojo) contra capacidad soportada (verde) en cuatro frentes.',
+      'Cambia solo Δx o solo BIL_n: observa cuántas comprobaciones se mueven a la vez.',
     ],
     misconception:
       'Presentar un cálculo aislado como solución. La cifra verde en un renglón no compensa un rojo en otro: el proyecto es el conjunto.',
-    model: 'Modelos didácticos de los experimentos anteriores (ajuste CFO–N, TOV equivalente, suma inductiva). Factores 1,05 / 1,15 / 1,25 / 20 % son hipótesis del ejercicio.',
+    model: 'Modelos de las exposiciones: ajuste N(CFO) de la lámina 16, corrección ÷ δ (lámina 15), α de la lámina 31 con α_obj = 25° de la lámina 36, V_torre = R·i + L·di/dt (Expo 77, pp. 53–57) y el flujo IEC 71-1 de la lámina 17 con K = 0,75 (equipo en aire). No hay factores de acoplamiento guarda–fase ni correlaciones de fabricante: V_torre se calcula sin acoplamiento (condición conservadora).',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'cardona', 'pararrayos', 'velasco', 'iec60071'],
+  sources: ['expo77', 'expo39'],
+  notes: [
+    'Las láminas no fijan un límite universal de α ni el acoplamiento guarda–fase k_c; V_torre se calcula sin acoplamiento (conservador) y α_obj = 25° es la referencia del ejemplo de la lámina 36.',
+    'Los valores de NPR, NPM y la serie de BIL_n son ilustrativos; las láminas describen el procedimiento, no el catálogo.',
+  ],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -863,7 +832,7 @@ const e18: Experiment = {
         environment(ctx, w, h, { mood: 'storm', groundY: h * 0.82, mountains: false });
         soilCutaway(ctx, 0, h * 0.82, w, h * 0.18, { layers: 2 });
         stormCloud(ctx, w * 0.16, h * 0.14, w * 0.36, 0.7);
-        sceneHeader(ctx, 'Proyecto integral: nube → torre → subestación', d.all ? '6/6 VERIFICACIONES EN VERDE' : 'REVISAR SEMÁFOROS EN ROJO', true);
+        sceneHeader(ctx, 'Proyecto integral: nube → torre → transformador', d.all ? '5/5 VERIFICACIONES EN VERDE' : 'REVISAR SEMÁFOROS EN ROJO', true);
 
         const gy = h * 0.82;
         const tx = w * 0.34;
@@ -884,24 +853,23 @@ const e18: Experiment = {
         electricArc(ctx, w * 0.16 + 6, h * 0.2, tx, guardY + rayU * (gy - guardY) * 0.28, t * 4, PAL.surgeBright, 1.8);
         glow(ctx, tx, guardY, 22, PAL.surgeBright, 0.28);
 
-        // Subestación con descargador y transformador
+        // Transformador con niveles del flujo IEC 71-1
         const ax = w * 0.7;
-        surgeArrester(ctx, ax, guardY + 10, gy, { active: d.marginOk === 1, t });
-        powerTransformer(ctx, w * 0.88, gy, w * 0.14, h * 0.22, { alert: d.marginOk === 0, label: `BIL ${fmt(p.bil, 0)}` });
+        surgeArrester(ctx, ax, guardY + 10, gy, { active: true, t });
+        powerTransformer(ctx, w * 0.88, gy, w * 0.14, h * 0.22, { alert: d.kbOk === 0 || d.bilnOk === 0, label: `BIL_n ${fmt(p.bil, 0)}` });
         line(ctx, w * 0.68, chain.endY + 4, ax, guardY + 10, { color: PAL.phaseBright, width: 2 });
         line(ctx, ax, guardY + 10, w * 0.88 - w * 0.02, guardY + 10, { color: PAL.phaseBright, width: 2 });
-        dimension(ctx, ax, guardY - 4, w * 0.88 - w * 0.02, guardY - 4, `d = ${fmt(p.dArr, 1)} m`, PAL.warnBright, true);
+        pill(ctx, `NPM ${fmt(p.npm, 0)} · NPR ${fmt(p.npr, 0)}`, ax, guardY - 12, { color: PAL.surge, align: 'center', mono: true, size: 9.5 });
 
-        // Tablero de 6 semáforos
+        // Tablero de 5 semáforos
         const bx = w * 0.56;
         const by = h * 0.36;
         const rows: [string, number][] = [
           ['Cadena / CFO', d.chain],
-          ['Guarda α', d.guard],
+          ['Guarda α ≤ 25°', d.guard],
           ['Tierra / rayo', d.ground],
-          ['U_c descargador', d.uc],
-          ['TOV catálogo', d.tov],
-          ['Margen M', d.marginOk],
+          ['BIL_n ≥ BIL', d.bilnOk],
+          ['K_b ≥ K_m', d.kbOk],
         ];
         rows.forEach(([label, ok], i) => {
           const yy = by + i * 19;
@@ -917,7 +885,7 @@ const e18: Experiment = {
       }}
       footer={
         <>
-          <strong>La línea completa en una sola mirada:</strong> rayo, guarda, cadena, tierra, pararrayos y transformador. Un semáforo rojo basta para rechazar el diseño.
+          <strong>La línea completa en una sola mirada:</strong> rayo, guarda, cadena, tierra y niveles IEC del transformador. Un semáforo rojo basta para rechazar el diseño.
         </>
       }
     />
@@ -926,331 +894,13 @@ const e18: Experiment = {
     <BarComparisonPlot
       groups={[
         { label: 'Maniobra en altura', stress: d.cfoReq, withstand: d.cfoString },
-        { label: 'Rayo en la torre', stress: d.vChain, withstand: p.cfo },
-        { label: 'Equipo / BIL', stress: d.uEff, withstand: p.bil },
+        { label: 'Rayo en la torre', stress: d.vt, withstand: d.cfoString },
+        { label: 'Rayo (BIL)', stress: d.bilCalc, withstand: p.bil },
+        { label: 'Maniobra (BSL)', stress: p.km * p.npm, withstand: d.bsl },
       ]}
-      caption={`Barras rojas = esfuerzo exigido; verdes = capacidad soportada. Se comparan peras con peras y en kV de cresta. δ = ${fmt(d.delta, 3)}, N = ${fmt(d.n, 0)} discos, α = ${fmt(d.alpha, 1)}°, M = ${fmt(d.margin, 1)} %.`}
+      caption={`Barras rojas = esfuerzo exigido; verdes = capacidad soportada. Se comparan peras con peras y en kV de cresta. δ = ${fmt(d.delta, 3)}, N = ${fmt(d.n, 0)} discos, α = ${fmt(d.alpha, 1)}°, K_b = ${fmt(d.kb, 3)}.`}
     />
   ),
 };
 
-/* =============================== e19 =============================== */
-
-const stateOf = (p: Params) => ({
-  conductionUA: p.ic,
-  absorptionUA: p.ia,
-  absTau: p.tau,
-  testV: p.vtest,
-});
-
-const e19: Experiment = {
-  id: 'e19',
-  topicId: 11,
-  contextLabel: 'Megóhmetro en un transformador',
-  title: 'Medir el aislamiento: la aguja cuenta una historia',
-  tagline: 'Corriente de carga, absorción y fuga: índices DAR y PI en una curva R(t)',
-  why: 'Interpretar una medición de resistencia de aislamiento y no confundir un valor bajo con su causa.',
-  params: [
-    {
-      id: 'ic',
-      group: 'Corrientes internas',
-      label: 'Corriente de conducción / fuga',
-      unit: 'µA',
-      min: 0.2,
-      max: 40,
-      step: 0.1,
-      def: 1,
-      decimals: 1,
-      help: 'Aumenta con humedad, suciedad y envejecimiento.',
-    },
-    {
-      id: 'ia',
-      group: 'Corrientes internas',
-      label: 'Corriente de absorción inicial',
-      unit: 'µA',
-      min: 5,
-      max: 80,
-      step: 1,
-      def: 45,
-    },
-    {
-      id: 'tau',
-      group: 'Corrientes internas',
-      label: 'Constante de absorción',
-      unit: 's',
-      min: 5,
-      max: 120,
-      step: 1,
-      def: 25,
-    },
-    {
-      id: 'vtest',
-      group: 'Condiciones del ensayo',
-      label: 'Tensión de ensayo',
-      unit: 'V',
-      min: 500,
-      max: 5000,
-      step: 100,
-      def: 5000,
-    },
-    {
-      id: 'temp',
-      group: 'Condiciones del ensayo',
-      label: 'Temperatura del devanado',
-      unit: '°C',
-      min: 0,
-      max: 60,
-      step: 1,
-      def: 25,
-    },
-    {
-      id: 'hum',
-      group: 'Condiciones del ensayo',
-      label: 'Humedad relativa',
-      unit: '%',
-      min: 20,
-      max: 95,
-      step: 1,
-      def: 55,
-    },
-  ],
-  presets: [
-    {
-      id: 'sano',
-      label: 'Aislamiento sano (seco y limpio)',
-      note: 'R sigue subiendo: DAR ≥ 1,6 y PI alto. La absorción decae con ley de potencia (1+t/τ)^−1,2.',
-      values: { ic: 0.6, ia: 45, tau: 25, vtest: 5000, temp: 25, hum: 50 },
-    },
-    {
-      id: 'humedo',
-      label: 'Aislamiento húmedo y sucio',
-      note: 'La corriente de fuga domina: DAR < 1,25 y R60 baja. Con 88 % de humedad el ensayo no es concluyente.',
-      values: { ic: 30, ia: 30, tau: 25, vtest: 5000, temp: 25, hum: 88 },
-    },
-    {
-      id: 'viejo',
-      label: 'Envejecido, con fugas',
-      note: 'Menos absorción, más conducción y temperatura alta: la R corregida a 20 °C cambia bastante.',
-      values: { ic: 5, ia: 12, tau: 20, vtest: 2500, temp: 45, hum: 60 },
-    },
-  ],
-  compute: (p) => {
-    const st = stateOf(p);
-    const r30 = insulationResistance(30, st);
-    const r60 = insulationResistance(60, st);
-    const r10 = insulationResistance(600, st);
-    const darV = dar(st);
-    const piV = piIndex(st);
-    const rCorr = correctTo20(r60, p.temp);
-    const invalid = p.hum > 80 || p.temp < 0 ? 1 : 0;
-    return { r30, r60, r10, dar: darV, pi: piV, rCorr, invalid, darOk: darV >= 1.25 ? 1 : 0 };
-  },
-  liveStatus: (p, d) => ({
-    tone: d.invalid ? 'warn' : d.dar >= 1.6 && d.pi >= 4 ? 'ok' : d.dar < 1.25 ? 'bad' : 'warn',
-    badge: d.invalid ? 'ENSAYO NO CONCLUYENTE' : d.dar >= 1.6 && d.pi >= 4 ? '✓ AISLAMIENTO SANO' : d.dar < 1.25 ? '✕ POSIBLE HUMEDAD / FUGA' : 'ESTADO INTERMEDIO',
-    message: d.invalid
-      ? `Con ${fmt(p.hum, 0)} % de humedad la superficie puede dominar la lectura: seca, limpia y repite antes de diagnosticar.`
-      : `DAR = ${fmt(d.dar, 2)} y PI = ${fmt(d.pi, 2)}. R60 = ${fmt(d.r60, 0)} MΩ; corregida a 20 °C queda en ${fmt(d.rCorr, 0)} MΩ.`,
-  }),
-  readings: (d, p) => [
-    { label: 'R a 30 s / 60 s', value: `${fmt(d.r30, 0)} / ${fmt(d.r60, 0)} MΩ`, sub: `a ${fmt(p.vtest, 0)} V de ensayo` },
-    { label: 'R a 10 min', value: `${fmt(d.r10, 0)} MΩ`, sub: 'cerca del valor estable de fuga' },
-    {
-      label: 'DAR = R₆₀/R₃₀',
-      value: fmt(d.dar, 2),
-      sub: d.dar < 1.25 ? 'insuficiente' : d.dar < 1.6 ? 'aceptable' : 'excelente',
-      tone: d.dar < 1.25 ? 'bad' : d.dar < 1.6 ? 'warn' : 'ok',
-    },
-    {
-      label: 'PI = R₁₀ₘᵢₙ/R₁ₘᵢₙ',
-      value: fmt(d.pi, 2),
-      sub: d.pi < 2 ? 'problema potencial' : d.pi > 4 ? 'excelente' : 'aceptable',
-      tone: d.pi < 2 ? 'bad' : d.pi > 4 ? 'ok' : 'warn',
-    },
-    { label: 'R₆₀ corregida a 20 °C', value: `${fmt(d.rCorr, 0)} MΩ`, sub: 'se duplica por cada −10 °C' },
-    {
-      label: 'Condiciones del ensayo',
-      value: d.invalid ? 'no concluyente' : 'válidas',
-      sub: d.invalid ? 'humedad > 80 %: domina la superficie' : 'temperatura y humedad declaradas',
-      tone: d.invalid ? 'bad' : 'ok',
-    },
-  ],
-  equations: (p, d) => [
-    `i(t) = I_conducción + I_absorción·(1 + t/τ)^−1,2 + I_carga capacitiva (τ = ${fmt(p.tau, 0)} s)`,
-    `R(t) = V_ensayo / i(t) → R₃₀ = ${fmt(d.r30, 1)} MΩ · R₆₀ = ${fmt(d.r60, 1)} MΩ · R₆₀₀ = ${fmt(d.r10, 1)} MΩ`,
-    `DAR = R₆₀/R₃₀ = ${fmt(d.dar, 2)} · PI = R₆₀₀/R₆₀ = ${fmt(d.pi, 2)}`,
-    `R(20 °C) = R_medida · 2^((T − 20)/10) = ${fmt(d.rCorr, 0)} MΩ (T = ${fmt(p.temp, 0)} °C)`,
-    'Un valor bajo y estable sugiere fuga; un valor que sigue subiendo sugiere aislamiento sano. La tendencia importa tanto como el número.',
-  ],
-  checks: (p, d) => [
-    { label: 'Se distingue prueba dieléctrica de medición de resistencia', ok: true, detail: 'la medición es no destructiva' },
-    { label: 'Se corrigen las condiciones de temperatura', ok: true, detail: `R(20 °C) = ${fmt(d.rCorr, 0)} MΩ` },
-    { label: 'La humedad y el punto de rocío se consideran', ok: d.invalid === 0, detail: d.invalid ? `${fmt(p.hum, 0)} %: ensayo no concluyente` : 'condiciones declaradas' },
-    { label: 'Los umbrales de PI no se aplican igual a todos los equipos', ok: true, info: true, detail: 'la guía lo advierte' },
-  ],
-  goals: [
-    {
-      id: 'g1',
-      label: 'Ajusta un aislamiento sano: DAR ≥ 1,6 y R₆₀ ≥ 100 MΩ',
-      tip: 'Pulsa «Aislamiento sano (seco y limpio)» o baja la corriente de fuga I_c.',
-      test: (_p, d) => d.dar >= 1.6 && d.r60 >= 100,
-      detail: (_p, d) => `DAR = ${fmt(d.dar, 2)} · R₆₀ = ${fmt(d.r60, 0)} MΩ`,
-    },
-    {
-      id: 'g2',
-      kind: 'exploracion',
-      label: 'Reproduce un caso húmedo: DAR < 1,25 y R₆₀ < 150 MΩ',
-      tip: 'Pulsa «Aislamiento húmedo y sucio» o sube I_c por encima de 25 µA.',
-      test: (_p, d) => d.dar < 1.25 && d.r60 < 150,
-      detail: (_p, d) => `DAR = ${fmt(d.dar, 2)} · R₆₀ = ${fmt(d.r60, 0)} MΩ`,
-    },
-  ],
-  quiz: {
-    question: 'Un motor de 5 kV se mide con 5.000 V: R30 = 90 MΩ, R60 = 98 MΩ y R10min = 140 MΩ. La temperatura es 25 °C y la humedad 88 %. ¿Cuál es la lectura más defendible?',
-    options: [
-      { id: 'a', label: 'Aislamiento húmedo o contaminado en la superficie: el DAR es bajo y el ensayo está afectado por la humedad.' },
-      { id: 'b', label: 'El aislamiento está sano porque R10min es mayor que R30.' },
-      { id: 'c', label: 'Hay una perforación franca del devanado.' },
-      { id: 'd', label: 'El megóhmetro está mal calibrado porque la resistencia sube con el tiempo.' },
-    ],
-    correct: 'a',
-    explanation:
-      'DAR = 98/90 = 1,09 (< 1,25) y PI es bajo: la corriente de fuga domina sobre la absorción, típico de humedad o contaminación superficial. Con 88 % de humedad el ensayo no es concluyente: hay que secar, limpiar y repetir. Una perforación daría un valor muy bajo y estable, no este patrón.',
-  },
-  learn: {
-    analogy:
-      'Al aplicar el megóhmetro, el aislamiento se comporta como una esponja: al principio absorbe corriente y la «resistencia» parece baja; con los segundos se satura y la lectura sube. Si la esponja está empapada (humedad), la aguja casi no se mueve.',
-    phenomenon:
-      'Al aplicar tensión continua, la corriente total tiene tres partes: carga capacitiva, absorción dieléctrica y fuga. La resistencia aparente crece con el tiempo según una ley de potencia; cómo crece revela el estado del aislamiento.',
-    objective:
-      'Interpretar R(t), calcular DAR y PI, corregir por temperatura y distinguir humedad superficial de daño interno.',
-    watch: [
-      'La pantalla del megóhmetro muestra la lectura en el instante animado; compara 30 s, 60 s y 10 min en la gráfica logarítmica.',
-      'Sube la corriente de conducción y mira cómo DAR y PI caen aunque la absorción sea la misma.',
-      'Cambia a 88 % de humedad: el estado pasa a «ensayo no concluyente» y se recomienda repetir.',
-    ],
-    misconception:
-      'Diagnosticar con un solo valor puntual, sin temperatura ni humedad, o aplicar los umbrales de PI a cualquier equipo. Tampoco es correcto escribir la absorción como e^(−t/τ): aquí se usa (1+t/τ)^−1,2.',
-    model: 'Modelo de tres corrientes con absorción en ley de potencia (1+t/τ)^−1,2. Umbrales de la guía: DAR < 1,25 insuficiente; PI < 2 problema potencial.',
-  },
-  sources: ['expo77', 'expo39', 'medicion', 'guion', 'slides'],
-  scene: ({ p, d, t }) => {
-    const st = stateOf(p);
-    const elapsed = 1 + ((t * 0.8) % 1) * 599;
-    const liveR = insulationResistance(elapsed, st);
-    const currents = insulationCurrents(elapsed, st);
-    return (
-      <SceneCanvas
-        legend={[
-          { color: PAL.phase, label: 'Corriente de absorción (decae)' },
-          { color: PAL.bad, label: 'Corriente de fuga (estable)' },
-          { color: PAL.ok, label: 'Resistencia aparente R(t) que sube' },
-        ]}
-        draw={(ctx, w, h) => {
-          environment(ctx, w, h, { mood: 'lab' });
-          sceneHeader(ctx, 'Megóhmetro conectado a un transformador', `${fmt(p.vtest, 0)} V CC · ${fmt(p.temp, 0)} °C · ${fmt(p.hum, 0)} % HR`);
-
-          // Transformador y cables de prueba
-          const gy = h * 0.84;
-          const trafo = powerTransformer(ctx, w * 0.24, gy, w * 0.22, h * 0.34, {
-            alert: d.dar < 1.25,
-            label: 'DEVANADO BAJO PRUEBA',
-          });
-          groundSymbol(ctx, w * 0.24, gy + 2, 10, PAL.copper);
-
-          // Instrumento de medición con pantalla y aguja
-          const ix = w * 0.55;
-          const iy = h * 0.13;
-          const iw = w * 0.38;
-          const ih = h * 0.62;
-          scopeScreen(ctx, ix, iy, iw, ih, { title: 'MEGÓHMETRO · LECTURA R(t)' });
-          const screenX = ix + 16;
-          const screenY = iy + 22;
-          const screenW = iw - 32;
-          const screenH = ih * 0.42;
-          ctx.save();
-          ctx.fillStyle = 'rgba(20, 50, 40, 0.92)';
-          ctx.beginPath();
-          ctx.roundRect(screenX, screenY, screenW, screenH, 6);
-          ctx.fill();
-          ctx.restore();
-          text(ctx, `${fmt(liveR, 0)} MΩ`, screenX + screenW / 2, screenY + 22, {
-            size: 20,
-            weight: 700,
-            color: '#7BE3C8',
-            align: 'center',
-            mono: true,
-          });
-          text(ctx, `t = ${fmt(elapsed, 0)} s`, screenX + screenW / 2, screenY + 44, {
-            size: 10.5,
-            color: '#A9C0D6',
-            align: 'center',
-            mono: true,
-          });
-
-          // Aguja semicircular
-          const needleCx = screenX + screenW / 2;
-          const needleCy = screenY + screenH - 8;
-          const needleR = Math.min(screenW * 0.34, screenH * 0.7);
-          const frac = clamp(Math.log10(Math.max(1, liveR)) / Math.log10(Math.max(10, d.r10)), 0.04, 0.96);
-          const ang = Math.PI - frac * Math.PI;
-          circle(ctx, needleCx, needleCy, needleR, { stroke: 'rgba(123,227,200,0.35)', width: 1.2, dash: [3, 4] });
-          arrow(ctx, needleCx, needleCy, needleCx + Math.cos(ang) * needleR, needleCy - Math.sin(ang) * needleR, PAL.okBright, 2);
-          circle(ctx, needleCx, needleCy, 4, { fill: PAL.okBright });
-
-          // Barras de corrientes
-          const barY = iy + ih - 34;
-          const maxI = Math.max(1, currents.total);
-          line(ctx, ix + 18, barY, ix + 18 + (currents.ic / maxI) * (iw - 36), barY, { color: PAL.bad, width: 8, cap: 'butt' });
-          line(ctx, ix + 18, barY + 14, ix + 18 + (currents.ia / maxI) * (iw - 36), barY + 14, { color: PAL.phase, width: 8, cap: 'butt' });
-          text(ctx, `fuga ${fmt(currents.ic, 1)} µA`, ix + 18, barY - 12, { size: 9.2, color: PAL.bad, mono: true });
-          text(ctx, `absorción ${fmt(currents.ia, 1)} µA`, ix + 18, barY + 28, { size: 9.2, color: PAL.phase, mono: true });
-
-          // Cables y resultado
-          line(ctx, trafo.bushingX, trafo.bushingY, ix + 8, iy + ih * 0.5, { color: PAL.bad, width: 1.8 });
-          line(ctx, w * 0.24, gy, ix + 8, iy + ih * 0.72, { color: PAL.copper, width: 1.8 });
-          pill(ctx, `DAR ${fmt(d.dar, 2)} · PI ${fmt(d.pi, 2)}`, ix, iy + ih + 14, { color: d.dar >= 1.6 ? PAL.ok : PAL.warn, mono: true, size: 10.5 });
-          pill(ctx, d.invalid ? 'Repetir: humedad alta' : 'Ensayo válido', ix + iw, iy + ih + 14, {
-            color: d.invalid ? PAL.bad : PAL.ok,
-            align: 'right',
-            mono: true,
-            size: 10.5,
-          });
-        }}
-        footer={
-          <>
-            <strong>La aguja sube con el tiempo:</strong> eso es bueno. Si se queda casi quieta en un valor bajo, domina la <strong>fuga</strong> y hay que revisar humedad o suciedad.
-          </>
-        }
-      />
-    );
-  },
-  plot: ({ p, d }) => {
-    const st = stateOf(p);
-    const pts: [number, number][] = logspace(1, 600, 180).map((tt) => [tt, Math.max(0.1, insulationResistance(tt, st))]);
-    return (
-      <Plot
-        xDomain={[1, 600]}
-        yDomain={[1, Math.max(4000, d.r10 * 1.5)]}
-        xLog
-        yLog
-        xLabel="Tiempo de medición (s — escala logarítmica)"
-        yLabel="Resistencia de aislamiento R(t) (MΩ — escala log)"
-        series={[{ pts, color: PAL.ok, width: 2.4, area: true, label: 'R(t) = V / i(t)' }]}
-        refs={[
-          { at: 30, label: '30 s (DAR)', color: PAL.phase, dash: '3 4', axis: 'x' },
-          { at: 60, label: '60 s (DAR / PI)', color: PAL.warn, dash: '3 4', axis: 'x' },
-          { at: 600, label: '10 min (PI)', color: PAL.surge, dash: '3 4', axis: 'x' },
-        ]}
-        markers={[
-          { x: 30, y: d.r30, color: PAL.phase, label: `R30 ${fmt(d.r30, 0)}` },
-          { x: 60, y: d.r60, color: PAL.warn, label: `R60 ${fmt(d.r60, 0)}` },
-          { x: 600, y: d.r10, color: PAL.surge, label: `R10min ${fmt(d.r10, 0)}` },
-        ]}
-        caption={`Escala logarítmica en MΩ para leer cómodamente 30 s, 60 s y 10 min. DAR = ${fmt(d.dar, 2)} · PI = ${fmt(d.pi, 2)} · R60 corregida a 20 °C = ${fmt(d.rCorr, 0)} MΩ.`}
-      />
-    );
-  },
-};
-
-export const protection2Experiments: Experiment[] = [e16, e17, e18, e19];
+export const protection2Experiments: Experiment[] = [e16, e17, e18];

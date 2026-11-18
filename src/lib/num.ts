@@ -1,16 +1,17 @@
 /**
- * Modelos numéricos compartidos por los 19 simuladores, el simulacro y las pruebas.
- * Todos los valores del guion, las diapositivas y la guía de ejercicios se reproducen
- * exactamente con las hipótesis declaradas en cada fuente.
+ * Modelos numéricos compartidos por los 18 simuladores, el simulacro y las pruebas.
+ * Todas las fórmulas y constantes provienen de las dos exposiciones del curso:
+ *   · Expo 77 «Coordinación de Aislamiento» (páginas citadas en cada función), y
+ *   · Expo 39 «G7 Aislamiento: Fundamentos de sobretensiones».
+ * Las constantes que el material rotulado como «del curso» no fija de forma exacta
+ * (p. ej. E₀ del aire) se etiquetan como adopción del curso en el punto de uso.
  */
 
 export const P0 = 101.325; // kPa (nivel del mar estándar)
 export const T0 = 293.15; // K (20 °C)
-export const E0_AIRE = 21.1; // kV/cm eficaces, aire estándar (efecto corona)
+export const E0_AIRE = 21.1; // kV/cm eficaces, aire estándar (adopción del curso; usado por el modelo de corona)
 
 export const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-export const r2 = (v: number, d = 2) => Number(v.toFixed(d));
 
 /** Formato es-CO: coma decimal, punto de miles. */
 export function fmt(v: number, d = 2): string {
@@ -146,14 +147,16 @@ export function flashoverVoltage(u50: number, sigmaPct: number, probabilityPct: 
 
 /* ------------------------- Cadena de aisladores ------------------------ */
 
-/** Criterio de fuga (IEC 60815 / Cardona). base: 1 = entre fases, 2 = fase–tierra. */
-export function creepageRequired(um: number, kf: number, base: 1 | 2, ka = 1): number {
+/** Criterio de fuga (Expo 77, pp. 12–13): L_f = k_f · Uₘ (kV) · 1000 mm/m.
+ *  base: 1 = entre fases (hipótesis del ejemplo de la lámina 13); 2 = fase–tierra (÷√3).
+ *  ka: factor adicional del usuario en mm/kV escalado, 1 por defecto. */
+export function creepageRequired(um: number, kf: number, base: 1 | 2 = 1, ka = 1): number {
   const denom = ka * (base === 2 ? Math.sqrt(3) : 1);
   return (kf * um) / Math.max(1e-6, denom);
 }
 
-/** Relación CFO–número de aisladores del material (Cardona, UNAL). */
-export const CFO_FIT = { a: 6.6485e-6, b: 7.9192e-3, c: -0.4219 };
+/** N = a·CFO² + b·CFO + c — relación N(CFO) de la Expo 77 (lámina 16); con cfo en kV da el número de discos. */
+export const CFO_FIT = { a: 6.6485e-6, b: 7.9192e-3, c: 0.4219 };
 
 export function insulatorsFromCfo(cfo: number): number {
   const { a, b, c } = CFO_FIT;
@@ -219,28 +222,6 @@ export function lineParams(lMHkm: number, cNFkm: number): { zc: number; v: numbe
   return { zc: Math.sqrt(lp / cp), v: 1 / Math.sqrt(lp * cp) };
 }
 
-/* ------------------------------- Pararrayos --------------------------- */
-
-export function ucMin(um: number, solidlyEarthed = true): number {
-  return solidlyEarthed ? 1.05 * (um / Math.sqrt(3)) : 1.05 * um;
-}
-
-export function tovEquivalent(uTov: number, durationS: number, md = 0.02): number {
-  return uTov * Math.pow(durationS / 10, md);
-}
-
-export function tovCapability(cap1s: number, durationS: number, md = 0.02): number {
-  return cap1s * Math.pow(1 / durationS, md);
-}
-
-export function protectionMargin(uWithstand: number, uApplied: number): number {
-  return (uWithstand / Math.max(1e-6, uApplied) - 1) * 100;
-}
-
-export function effectiveProtection(ures: number, d: number, lcMicroHm: number, didtKAus: number): number {
-  return ures + lcMicroHm * d * didtKAus;
-}
-
 /* --------------------------------- Corona ----------------------------- */
 
 export function bundleEquivalentRadius(r: number, n: number, bundleRadius: number): number {
@@ -259,38 +240,30 @@ export function peekLoss(rEq: number, s: number, f: number, delta: number, u: nu
   return k * Math.pow(u - u0, 2) * 1e-5;
 }
 
-/* ---------------------- Medición de aislamiento ----------------------- */
+/* --------- Distribución y velocidad del rayo (Expo 39, pp. 24–31) --------- */
 
-export type InsulationState = {
-  conductionUA: number;
-  absorptionUA: number;
-  absTau: number;
-  testV: number;
-};
-
-export function insulationResistance(t: number, st: InsulationState): number {
-  const decay = Math.pow(1 + t / Math.max(0.5, st.absTau), -1.2);
-  const i = (st.conductionUA + st.absorptionUA * decay) * 1e-6;
-  return st.testV / Math.max(1e-12, i) / 1e6;
+/** Probabilidad de excedencia lognormal: negativas Ī = 29,96 kA, σ_ln = 0,65;
+ *  positivas Ī = 35,16 kA, σ_ln = 1,23 (lámina 25). */
+export function lognormalExceed(i: number, pol: 'negativa' | 'positiva' = 'negativa'): number {
+  const mean = pol === 'positiva' ? 35.16 : 29.96;
+  const sigma = pol === 'positiva' ? 1.23 : 0.65;
+  const li = Math.log(Math.max(1e-9, i));
+  return 1 - normalCdf((li - Math.log(mean)) / sigma);
 }
 
-export function insulationCurrents(t: number, st: InsulationState): { ic: number; ia: number; icap: number; total: number } {
-  const ic = st.conductionUA;
-  const ia = st.absorptionUA * Math.pow(1 + t / Math.max(0.5, st.absTau), -1.2);
-  const icap = (st.testV / 100) * Math.exp(-t / 2.2);
-  return { ic, ia, icap, total: ic + ia + icap };
+/** Forma cerrada aproximada de la probabilidad de excedencia: P ≈ 1 / (1 + (I/31)^2,6) (lámina 26). */
+export function lightningTailApprox(i: number): number {
+  return 1 / (1 + Math.pow(Math.max(1e-9, i) / 31, 2.6));
 }
 
-export function dar(r: InsulationState): number {
-  return insulationResistance(60, r) / insulationResistance(30, r);
+/** Densidad de impactos: N_g = 0,04 · T_d^1,25 (lámina 30). */
+export function ngFromStormDays(td: number): number {
+  return 0.04 * Math.pow(Math.max(0, td), 1.25);
 }
 
-export function piIndex(r: InsulationState): number {
-  return insulationResistance(600, r) / insulationResistance(60, r);
-}
-
-export function correctTo20(rMeasured: number, tempC: number): number {
-  return rMeasured * Math.pow(2, (tempC - 20) / 10);
+/** Velocidad de retorno del líder: v = c / √(1 + W/I), W ∈ [50, 500] (lámina 31). */
+export function returnStrokeVelocity(i: number, w: number): number {
+  return 299792458 / Math.sqrt(1 + Math.max(0, w) / Math.max(1e-9, i));
 }
 
 /* ------------------------------ Utilidades ---------------------------- */

@@ -97,7 +97,7 @@ export const TOPICS: Topic[] = [
       'Proceso iterativo: si cambias el pararrayos o subes la línea a Bogotá, debes volver a revisar cadenas y distancias.',
     ],
     experiments: [],
-    sources: ['expo39', 'expo77', 'iec60071'],
+    sources: ['expo39', 'expo77'],
   },
   {
     id: 2,
@@ -119,7 +119,7 @@ export const TOPICS: Topic[] = [
       'Regla de oro de unidades: frecuencia industrial en kV eficaces (RMS); impulsos de rayo y maniobra en kV de cresta (pico).',
     ],
     experiments: ['e01', 'e02', 'e03'],
-    sources: ['expo39', 'expo77', 'iec60060'],
+    sources: ['expo39', 'expo77'],
   },
   {
     id: 3,
@@ -141,7 +141,7 @@ export const TOPICS: Topic[] = [
       'Efectos en líneas (pp. 32–33): impacto directo en fase V = ½·Z_c·I (supera el BIL) · impacto en torre/guarda con flameo inverso (backflashover) si R_pt es elevada · sobretensiones inducidas por impactos cercanos.',
     ],
     experiments: ['e04'],
-    sources: ['expo39', 'expo77', 'velasco'],
+    sources: ['expo39', 'expo77'],
   },
   {
     id: 4,
@@ -163,7 +163,7 @@ export const TOPICS: Topic[] = [
       'Atmósfera (p. 38): rigidez del aire según presión b (kPa) y temperatura T (°C), con T₀ = 20 °C (293,1 K) y B₀ = 101,3 kPa. Densidad relativa δ: en Bogotá δ ≈ 0,74.',
     ],
     experiments: ['e05', 'e06', 'e07'],
-    sources: ['expo77', 'expo39', 'velasco', 'iec60071'],
+    sources: ['expo77', 'expo39'],
   },
   {
     id: 5,
@@ -184,7 +184,7 @@ export const TOPICS: Topic[] = [
       'Criterios simultáneos (p. 17): fuga, maniobra, rayo, mecánica y ambiente. La selección final satisface todas las comprobaciones.',
     ],
     experiments: ['e08', 'e09'],
-    sources: ['expo77', 'cardona', 'iec60815'],
+    sources: ['expo77'],
   },
   {
     id: 6,
@@ -206,7 +206,7 @@ export const TOPICS: Topic[] = [
       'Fase–fase (pp. 25–26): D = K·√(F + L) + V_n/150. Ejemplo K = 0,75, F = 8 m, L = 3 m, V_n = 230 kV → D ≈ 4,02 m (estimación preliminar). Vertical 6,0 m según Código de Redes citado; horizontal/vertical/triangular no son equivalentes.',
     ],
     experiments: ['e10', 'e11'],
-    sources: ['expo77', 'cardona', 'velasco'],
+    sources: ['expo77'],
   },
   {
     id: 7,
@@ -227,7 +227,7 @@ export const TOPICS: Topic[] = [
       'Errores frecuentes (p. 74): 38,7° es un ángulo geométrico, no garantía de apantallamiento.',
     ],
     experiments: ['e12'],
-    sources: ['expo77', 'expo39', 'cardona', 'velasco'],
+    sources: ['expo77', 'expo39'],
   },
   {
     id: 8,
@@ -249,7 +249,7 @@ export const TOPICS: Topic[] = [
       'Errores frecuentes (p. 74): 25 Ω no certifica seguridad ni respuesta impulsiva universal.',
     ],
     experiments: ['e13', 'e14'],
-    sources: ['expo77', 'expo39', 'velasco'],
+    sources: ['expo77', 'expo39'],
   },
   {
     id: 9,
@@ -271,7 +271,7 @@ export const TOPICS: Topic[] = [
       'Importancia (p. 54): las reflexiones alteran la sobretensión en equipos y subestaciones; la ubicación de protección debe verificarse con el comportamiento transitorio.',
     ],
     experiments: ['e15'],
-    sources: ['expo77', 'expo39', 'velasco', 'pararrayos'],
+    sources: ['expo77', 'expo39'],
   },
   {
     id: 10,
@@ -293,29 +293,29 @@ export const TOPICS: Topic[] = [
       'Errores frecuentes (p. 74): Peek es estimación empírica con condiciones y unidades; no es fórmula exacta universal.',
     ],
     experiments: ['e17'],
-    sources: ['expo77', 'corona'],
+    sources: ['expo77'],
   },
   {
     id: 11,
     stage: 'propagacion',
     icon: 'check',
-    title: 'Cierre: niveles IEC, pararrayos e integración',
+    title: 'Cierre: niveles IEC e integración',
     question: '¿Cómo se verifica que todo funciona junto y qué errores pueden preguntarte?',
-    whereOnLine: 'Proyecto integral: línea de 245 kV + subestación',
+    whereOnLine: 'Proyecto integral: línea de 245 kV + equipo',
     minutes: '125–135 min',
     slides: 'Expo 77: 62–77 · Sobretensiones: 14–17',
-    idea: 'Las decisiones se verifican como conjunto, no en aislamiento: el objetivo es soportar las solicitaciones previsibles con un riesgo aceptable. La resistencia dieléctrica frente a sobretensiones se expresa con BIL, BSL, K, NPM/NPR, K_M y K_I según IEC 71-1. El pararrayos recorta el pico, pero su ubicación y conexiones determinan el margen real en el equipo.',
+    idea: 'Las decisiones se verifican como conjunto, no en aislamiento: el objetivo es soportar las solicitaciones previsibles con un riesgo aceptable. La resistencia dieléctrica frente a los tipos de sobretensión se expresa con BIL, BSL, K, NPM/NPR, K_M y K_I según IEC 71-1 (Sobretensiones, pp. 14–17).',
     realWorld:
-      'En la misión final tomas el rol del ingeniero diseñador de una línea de 245 kV a 2.640 m (Bogotá): ajustas aisladores, guarda, puesta a tierra y pararrayos hasta aprobar las verificaciones simultáneas.',
+      'En la misión final tomas el rol del ingeniero diseñador de una línea de 245 kV en Bogotá: ajustas cadena, guarda, puesta a tierra y niveles de aislamiento hasta aprobar las verificaciones simultáneas.',
     keys: [
-      'IEC 71-1 (Sobretensiones, pp. 14–16): BIL = soportada a impulso tipo rayo · BSL = soportada a impulso tipo maniobra · K = BSL/BIL (0,83 aceite, 0,75 aire) · NPM/NPR = niveles de protección del descargador · K_M = 1,15 (BSL/NPM) · K_I = 1,2–1,4, común 1,25 (1,4 si < 52 kV).',
-      'Pararrayos ZnO: U_c continua, TOV temporal, U_res residual, U_equipo con caída inductiva y margen M frente al BIL. Ubicarlo pegado al equipo.',
-      'Siempre comparar peras con peras: misma forma de onda, misma unidad (cresta con cresta, eficaz con eficaz) y misma altitud.',
-      'Errores frecuentes (Expo 77, p. 74): 21 discos solo satisfacen la fuga del ejemplo · 38,7° no garantiza apantallamiento · 25 Ω no certifica seguridad · U₅₀ es 50 % de disrupción · Peek es empírica.',
+      'IEC 71-1 (Sobretensiones, pp. 14–16): BIL = soportada a impulso tipo rayo · BSL = soportada a impulso tipo maniobra · K = BSL/BIL (0,83 aceite / 0,75 aire) · NPM y NPR = niveles máximos de tensión pico que deben aparecer en los bornes del descargador · K_M = 1,15 (común, relaciona BSL y NPM) · K_I = 1,2–1,4, común 1,25 (para < 52 kV se usa 1,4).',
+      'Procedimiento (p. 17): 1) obtener NPR y NPM del descargador → 2) determinar K_i y K_m deseados → 3) BIL = K_i · NPR → 4) elegir BIL normalizado BIL_n ≥ BIL → 5) BSL = K · BIL_n → 6) K_b = BSL / NPM → 7) si K_b ≥ K_m se especifica BIL; si no, se incrementa BIL_n y se repite.',
+      'Integración (Expo 77, pp. 62–74): cadena, separaciones, guarda, puesta a tierra, ondas y corona se condicionan entre sí; un criterio verde aislado no salva el conjunto.',
+      'Errores frecuentes (p. 74): 21 discos solo satisfacen la fuga del ejemplo · 38,7° no garantiza apantallamiento · 25 Ω no certifica seguridad · U₅₀ es 50 % de disrupción · Peek es empírica.',
       'Pregunta de discusión (p. 77): ¿qué criterio controla el diseño cuando las exigencias se contradicen?',
     ],
-    experiments: ['e16', 'e18', 'e19'],
-    sources: ['expo77', 'expo39', 'pararrayos', 'iec60071', 'iec60099'],
+    experiments: ['e16', 'e18'],
+    sources: ['expo77', 'expo39'],
   },
 ];
 

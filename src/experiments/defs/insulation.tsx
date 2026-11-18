@@ -40,10 +40,10 @@ const e07: Experiment = {
       group: 'Qué estás comparando',
       label: 'Exponente de corrección (n)',
       min: 0.5,
-      max: 1,
+      max: 1.5,
       step: 0.05,
-      def: 0.75,
-      help: 'Depende de la forma de onda y la geometría; aquí 0,75 es el valor didáctico del curso.',
+      def: 1,
+      help: 'La corrección del documento (lámina 15 del Expo 77) es dividir por δ: exponente 1. Se deja editable para comparar.',
     },
     {
       id: 'uref',
@@ -62,25 +62,25 @@ const e07: Experiment = {
       id: 'bogota',
       label: 'Bogotá (2.640 m, 14 °C)',
       note: 'Caso real del curso: presión 73,38 kPa y δ = 0,739. La capacidad externa cae ~20 %.',
-      values: { h: 2640, temp: 14, n: 0.75, uref: 700 },
+      values: { h: 2640, temp: 14, n: 1, uref: 700 },
     },
     {
       id: 'mar',
       label: 'Costa Caribe (0 m, 30 °C)',
       note: 'Aire denso y cálido: aún a 30 °C la densidad relativa δ se mantiene cerca de 0,97.',
-      values: { h: 0, temp: 30, n: 0.75, uref: 700 },
+      values: { h: 0, temp: 30, n: 1, uref: 700 },
     },
     {
       id: 'reto',
       label: 'Reto de la guía (δ ≈ 0,81)',
       note: 'Altitud intermedia ~1.750 m a 20 °C: δ entre 0,80 y 0,82 y U corregida todavía por encima de 575 kV.',
-      values: { h: 1750, temp: 20, n: 0.75, uref: 700 },
+      values: { h: 1750, temp: 20, n: 1, uref: 700 },
     },
     {
       id: 'paramo',
       label: 'Páramo andino (3.200 m, 5 °C)',
       note: 'Aire muy delgado: se requiere más distancia y más discos que en Bogotá, aunque la temperatura sea baja.',
-      values: { h: 3200, temp: 5, n: 0.75, uref: 700 },
+      values: { h: 3200, temp: 5, n: 1, uref: 700 },
     },
   ],
   compute: (p) => {
@@ -180,9 +180,9 @@ const e07: Experiment = {
     ],
     misconception:
       'Aplicar δ a todo el equipo o escribir °C dentro de la fórmula δ = (p/p₀)(T₀/T). La temperatura debe estar en kelvin y el alcance se limita al aislamiento externo.',
-    model: 'Atmósfera estándar barométrica y exponente didáctico n. No incluye humedad, lluvia ni contaminación.',
+    model: 'Atmósfera estándar barométrica y corrección del documento CFO/δ (Expo 77, p. 15; Sobretensiones, p. 38). No incluye humedad, lluvia ni contaminación.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'diana', 'cardona'],
+  sources: ['expo39', 'expo77'],
   notes: ['En Colombia, por encima de 1.000 m s.n.m. la corrección por altitud del aislamiento externo es una condición de proyecto, no un detalle opcional.'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
@@ -297,7 +297,7 @@ const e08: Experiment = {
       max: 35,
       step: 1,
       def: 25,
-      help: '16 = zona limpia · 20 = media · 25 = fuerte · 31 = costa/industria severa.',
+      help: 'k_f = 25 mm/kV es el coeficiente del ejemplo de la actividad 06 (lámina 13).',
     },
     {
       id: 'base',
@@ -308,8 +308,8 @@ const e08: Experiment = {
       step: 1,
       def: 1,
       options: [
-        { value: 1, label: 'Uₘ entre fases (guion)' },
-        { value: 2, label: 'U_f fase–tierra (IEC)' },
+        { value: 1, label: 'Uₘ entre fases (actividad 06)' },
+        { value: 2, label: 'U_f fase–tierra (÷ √3)' },
       ],
       help: 'Esta convención cambia el resultado en ×√3 ≈ 1,73. Siempre declárala.',
     },
@@ -359,7 +359,7 @@ const e08: Experiment = {
     },
     {
       id: 'iec',
-      label: 'Convención IEC + Bogotá (≤18 discos)',
+      label: 'Base fase–tierra + Bogotá (≤18 discos)',
       note: 'Si k_f se refiere a U_f (fase–tierra), el requisito se divide entre √3; con k_a = δ = 0,739 bastan 17 discos.',
       values: { um: 245, kf: 25, base: 2, altura: 1, fuga: 292, paso: 0.146 },
     },
@@ -411,7 +411,7 @@ const e08: Experiment = {
     'Ojo: cambiar la base de «entre fases» a «fase–tierra» no es un error de redondeo: divide el requisito entre 1,73.',
   ],
   checks: (p, d) => [
-    { label: 'Se declara la base de k_f', ok: true, detail: p.base === 2 ? 'fase–tierra (IEC/Cardona)' : 'entre fases (ejercicio del guion)' },
+    { label: 'Se declara la base de k_f', ok: true, detail: p.base === 2 ? 'fase–tierra (÷ √3)' : 'entre fases (hipótesis del ejemplo, lámina 13)' },
     { label: 'El número de discos es entero', ok: Number.isInteger(d.n), detail: `${fmt(d.n, 0)} discos` },
     { label: 'Se distingue fuga / arco / longitud', ok: true, detail: 'tres magnitudes físicas diferentes' },
     { label: 'Faltan maniobra, rayo y verificación mecánica', ok: true, info: true, detail: 'este criterio solo cubre contaminación' },
@@ -428,7 +428,7 @@ const e08: Experiment = {
     {
       id: 'g2',
       label: 'Con base fase–tierra y corrección por altitud, obtén 18 discos o menos',
-      tip: 'Cambia la convención a «U_f fase–tierra (IEC)» y activa «Bogotá 2.640 m».',
+      tip: 'Cambia la convención a «U_f fase–tierra (÷ √3)» y activa «Bogotá 2.640 m».',
       test: (p, d) => p.base === 2 && p.altura === 1 && d.n <= 18,
       detail: (_p, d) => `N = ${fmt(d.n, 0)} discos con k_a = ${fmt(d.ka, 3)}`,
     },
@@ -447,9 +447,9 @@ const e08: Experiment = {
     ],
     misconception:
       'Copiar «25 mm/kV» sin declarar si se refiere a Uₘ o U_f. Y creer que con este cálculo ya está lista la cadena: todavía faltan maniobra, rayo y mecánica.',
-    model: 'Criterio de fuga específica con k_a = δ para altitud. La selección real bajo contaminación exige el procedimiento IEC TS 60815 y datos del sitio.',
+    model: 'k_f se aplica a Uₘ o a Uₘ/√3 según la base declarada; k_a = δ corrige por altitud. La lámina no fija procedimiento de contaminación: es una comparación de convenciones, no un diseño por contaminación.',
   },
-  sources: ['expo77', 'guion', 'slides', 'cardona', 'iec60815', 'ejercicios'],
+  sources: ['expo77'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -757,7 +757,7 @@ const e09: Experiment = {
       'Pensar que U₅₀ = 700 kV significa «soporta 700 kV», o dividir dos veces por δ (una en el cálculo y otra al escribir la fórmula).',
     model: 'Ajuste CFO–N del material UNAL, σ = 6 % y δ con exponente 1. La selección real combina además rayo, contaminación y mecánica.',
   },
-  sources: ['expo77', 'guion', 'cardona', 'ejercicios', 'iec60071'],
+  sources: ['expo77'],
   scene: ({ d, t }) => (
     <SceneCanvas
       legend={[

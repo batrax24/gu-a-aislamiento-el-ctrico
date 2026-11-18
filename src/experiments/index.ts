@@ -7,7 +7,7 @@ import { protectionExperiments } from './defs/protection';
 import { protection2Experiments } from './defs/protection2';
 import type { Experiment } from './types';
 
-/** Orden secuencial del currículo: el botón «Siguiente» recorre los 19 simuladores sin saltarse ninguno. */
+/** Orden secuencial del currículo: el botón «Siguiente» recorre los 18 simuladores sin saltarse ninguno. */
 export const SEQUENTIAL_ORDER = [
   'e01',
   'e02',
@@ -27,7 +27,6 @@ export const SEQUENTIAL_ORDER = [
   'e16',
   'e17',
   'e18',
-  'e19',
 ] as const;
 
 export const ALL_DEFS: Experiment[] = [
