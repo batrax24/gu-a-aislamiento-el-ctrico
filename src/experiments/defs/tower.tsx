@@ -169,7 +169,7 @@ const e10: Experiment = {
       'Aprobar el reto por quedar «cerca» del rango numérico: 28° da 2,061 m y sigue fallando frente a 2,42 m. El requisito manda, no la proximidad.',
     model: 'Plano 2D, cadena recta y desplazamiento solo horizontal. No incluye flecha del conductor ni tercera dimensión.',
   },
-  sources: ['expo77', 'guion', 'slides', 'velasco', 'ejercicios'],
+  sources: ['expo77'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -260,53 +260,46 @@ const e11: Experiment = {
   topicId: 6,
   contextLabel: 'Vano entre dos torres',
   title: 'Separación entre fases a mitad del vano',
-  tagline: 'Flecha, largo de cadena, voltaje y altitud: la geometría antes del diseño normativo',
-  why: 'Predimensionar la ventana de la torre y ver cómo la menor densidad del aire obliga a abrir más la separación.',
+  tagline: 'Flecha, largo de cadena y voltaje: la geometría antes del diseño normativo',
+  why: 'Predimensionar la ventana de la torre aplicando la expresión del curso y ver qué término domina: el geométrico (flecha y cadena) o el eléctrico (tensión).',
   params: [
-    { id: 'K', label: 'Coeficiente empírico K', min: 0.5, max: 1, step: 0.01, def: 0.75, help: 'Valor histórico del ejemplo: 0,75. Está atado a las unidades de la fórmula.' },
+    { id: 'K', label: 'Coeficiente empírico K', min: 0.5, max: 1, step: 0.01, def: 0.75, help: '0,75 es el valor del ejemplo de la actividad 08; está atado a las unidades de la fórmula.' },
     { id: 'F', label: 'Flecha máxima del conductor (F)', unit: 'm', min: 1, max: 20, step: 0.1, def: 8, help: 'Cuánto baja el cable por temperatura/carga a mitad del vano.' },
     { id: 'L', label: 'Longitud de cadena (L)', unit: 'm', min: 0.5, max: 6, step: 0.01, def: 3, decimals: 2 },
     { id: 'Vn', label: 'Tensión nominal entre fases (Vₙ)', unit: 'kV', min: 66, max: 550, step: 1, def: 230 },
-    { id: 'delta', label: 'Densidad relativa del aire (δ)', min: 0.6, max: 1, step: 0.01, def: 1, help: 'δ = 0,74 para Bogotá; la altitud agranda el claro requerido.' },
   ],
   presets: [
     {
       id: 'curso',
       label: 'Ejemplo del curso (D ≈ 4,02 m)',
-      note: 'K=0,75 · F=8 m · L=3 m · Vₙ=230 kV → D = 2,48 + 1,53 = 4,02 m.',
-      values: { K: 0.75, F: 8, L: 3, Vn: 230, delta: 1 },
-    },
-    {
-      id: 'bogota',
-      label: 'Bogotá (δ = 0,74): el claro crece > 4,2 m',
-      note: 'Al corregir el criterio de claro por altitud, la separación fase–fase requerida sube por encima de 4,2 m.',
-      values: { K: 0.75, F: 8, L: 3, Vn: 230, delta: 0.74 },
+      note: 'K=0,75 · F=8 m · L=3 m · Vₙ=230 kV → D = 2,48 + 1,53 = 4,02 m (actividad 08, p. 26).',
+      values: { K: 0.75, F: 8, L: 3, Vn: 230 },
     },
     {
       id: 'vano500',
       label: 'Vano largo de 500 kV (F = 14 m)',
-      note: 'Al aumentar flecha, cadena y tensión nominal crecen los dos criterios; compara cuál manda en la lectura.',
-      values: { K: 0.8, F: 14, L: 4, Vn: 500, delta: 0.9 },
+      note: 'Con más flecha y tensión crecen los dos términos: compáralos y observa cuál domina.',
+      values: { K: 0.8, F: 14, L: 4, Vn: 500 },
+    },
+    {
+      id: 'linea230',
+      label: 'Línea típica 230 kV con flecha 4 m',
+      note: 'Holgura didáctica: K=0,75 · F=4 m · L=3 m · Vₙ=230 kV.',
+      values: { K: 0.75, F: 4, L: 3, Vn: 230 },
     },
   ],
   compute: (p) => {
     const termGeo = p.K * Math.sqrt(Math.max(0, p.F + p.L));
     const termElec = p.Vn / 150;
     const demp = termGeo + termElec;
-    const vCorr = p.Vn / Math.max(0.01, p.delta);
-    // Claro fase–estructura NESC simplificado, pasado a separación fase–fase (× 2,3 del curso) y con altitud.
-    const nescIn = 3 + 0.2 * (vCorr - 8.7);
-    const dnesc = nescIn * 0.0254 * 1.15 * 2.3;
-    const req = Math.max(demp, dnesc);
-    return { termGeo, termElec, demp, nescIn, dnesc, vCorr, req, governs: dnesc > demp ? 1 : 0 };
+    return { termGeo, termElec, demp, governs: termElec >= termGeo ? 1 : 0 };
   },
-  liveStatus: (p, d) => ({
-    tone: d.governs ? 'warn' : 'ok',
-    badge: `${d.governs ? 'MANDA ALTITUD / NESC' : 'MANDA GEOMETRÍA'} · D = ${fmt(d.req, 2)} m`,
-    message:
-      d.governs
-        ? `Con δ = ${fmt(p.delta, 2)}, el claro fase–fase corregido (${fmt(d.dnesc, 2)} m) supera la fórmula empírica (${fmt(d.demp, 2)} m).`
-        : `La fórmula empírica da ${fmt(d.demp, 2)} m y el criterio de claro ${fmt(d.dnesc, 2)} m: se toma el mayor.`,
+  liveStatus: (_p, d) => ({
+    tone: 'info',
+    badge: `${d.governs ? 'MANDA EL TÉRMINO ELÉCTRICO' : 'MANDA EL TÉRMINO GEOMÉTRICO'} · D = ${fmt(d.demp, 2)} m`,
+    message: d.governs
+      ? `El término Vₙ/150 (${fmt(d.termElec, 2)} m) supera a K·√(F + L) (${fmt(d.termGeo, 2)} m): la tensión es la que obliga a abrir la ventana.`
+      : `K·√(F + L) (${fmt(d.termGeo, 2)} m) supera a Vₙ/150 (${fmt(d.termElec, 2)} m): la mecánica del vano es la que fija la ventana.`,
   }),
   readings: (d, p) => [
     {
@@ -316,76 +309,78 @@ const e11: Experiment = {
       tone: 'neutral',
     },
     {
-      label: 'Claro fase–fase corregido',
-      value: `${fmt(d.dnesc, 3)} m`,
-      sub: `V/δ = ${fmt(d.vCorr, 1)} kV · ${fmt(d.nescIn, 1)} pulg base`,
-      tone: d.governs ? 'warn' : 'neutral',
+      label: 'Término geométrico K·√(F + L)',
+      value: `${fmt(d.termGeo, 3)} m`,
+      sub: `${fmt(p.K, 2)} × √(${fmt(p.F, 1)} + ${fmt(p.L, 2)})`,
     },
     {
-      label: 'Distancia de diseño preliminar',
-      value: `${fmt(d.req, 3)} m`,
-      sub: `manda ${d.governs ? 'criterio de altitud' : 'fórmula empírica'}`,
-      tone: 'ok',
+      label: 'Término eléctrico Vₙ/150',
+      value: `${fmt(d.termElec, 3)} m`,
+      sub: `${fmt(p.Vn, 0)} kV / 150`,
     },
-    { label: 'Tensión corregida Vₙ/δ', value: `${fmt(d.vCorr, 1)} kV`, sub: `δ = ${fmt(p.delta, 2)}` },
+    {
+      label: 'Término que manda',
+      value: d.governs ? 'eléctrico (Vₙ)' : 'geométrico (F, L)',
+      sub: 'el mayor de los dos aportes a D',
+      tone: 'neutral',
+    },
   ],
   equations: (p, d) => [
-    `D ≈ K√(F+L) + Vₙ/150 = ${fmt(p.K, 2)}√(${fmt(p.F, 1)}+${fmt(p.L, 2)}) + ${fmt(p.Vn, 0)}/150 = ${fmt(d.demp, 3)} m`,
-    `Corrección por altitud: V/δ = ${fmt(p.Vn, 0)}/${fmt(p.delta, 2)} = ${fmt(d.vCorr, 1)} kV`,
-    `Claro NESC simplificado: 3 + 0,2·(${fmt(d.vCorr, 1)} − 8,7) = ${fmt(d.nescIn, 1)} pulg`,
-    `Claro fase–fase = ${fmt(d.nescIn, 1)} × 0,0254 × 1,15 × 2,3 = ${fmt(d.dnesc, 3)} m`,
-    `D_diseño = máx(${fmt(d.demp, 2)}, ${fmt(d.dnesc, 2)}) = ${fmt(d.req, 2)} m (predimensionamiento, no sustituye la norma)`,
+    `D ≈ K√(F + L) + Vₙ/150 = ${fmt(p.K, 2)}√(${fmt(p.F, 1)} + ${fmt(p.L, 2)}) + ${fmt(p.Vn, 0)}/150 = ${fmt(d.demp, 3)} m`,
+    `Reparto del resultado: ${fmt(d.termGeo, 2)} m (geometría) + ${fmt(d.termElec, 2)} m (voltaje) = ${fmt(d.demp, 2)} m`,
+    'Resultado de predimensionamiento (actividad 08): una verificación final debe revisar separaciones e impulsos con el método aplicable al proyecto.',
   ],
-  checks: (p, d) => [
-    { label: 'El resultado es de predimensionamiento', ok: true, detail: 'no reemplaza el diseño normativo' },
-    { label: 'Se revisan flecha F y cadena L', ok: true, detail: `F+L = ${fmt(p.F + p.L, 1)} m` },
-    { label: 'La altitud se declara con δ', ok: true, detail: `δ = ${fmt(p.delta, 2)}` },
-    { label: 'Se toma el mayor de los dos criterios', ok: true, detail: `${fmt(d.req, 2)} m` },
+  checks: (_p, d) => [
+    { label: 'El resultado es de predimensionamiento', ok: true, detail: 'no reemplaza la verificación final del proyecto' },
+    { label: 'Se declararon flecha F y cadena L', ok: true, detail: `F + L = ${fmt(_p.F + _p.L, 1)} m` },
+    { label: 'Las unidades mandan la fórmula', ok: true, detail: 'K = 0,75 está atado a F y L en metros y Vₙ en kV' },
+    { label: 'Se identifica qué término controla', ok: true, detail: d.governs ? 'eléctrico' : 'geométrico' },
   ],
   goals: [
     {
       id: 'g1',
       kind: 'exploracion',
-      label: 'Reproduce el ejemplo del curso: D empírico ≈ 4,02 m',
+      label: 'Reproduce el ejemplo del curso: D ≈ 4,02 m',
       tip: 'Pulsa «Ejemplo del curso (D ≈ 4,02 m)».',
       test: (_p, d) => Math.abs(d.demp - 4.02) < 0.03,
       detail: (_p, d) => `D = ${fmt(d.demp, 3)} m`,
     },
     {
       id: 'g2',
-      label: 'Muestra que al corregir por δ = 0,74 el claro normativo exige más de 4,2 m',
-      tip: 'Pulsa «Bogotá (δ = 0,74)» o baja δ hasta 0,74.',
-      test: (p, d) => p.delta <= 0.75 && d.dnesc > 4.2,
-      detail: (_p, d) => `Claro corregido = ${fmt(d.dnesc, 3)} m`,
+      kind: 'exploracion',
+      label: 'Haz que el término eléctrico supere al geométrico',
+      tip: 'Con F = 14 m y L = 4 m, sube Vₙ por encima de ~510 kV o reduce la flecha.',
+      test: (_p, d) => d.governs === 1,
+      detail: (_p, d) => `Vₙ/150 = ${fmt(d.termElec, 2)} m vs ${fmt(d.termGeo, 2)} m`,
     },
   ],
   learn: {
     analogy:
-      'Dos cables colgados entre torres se parecen a dos cuerdas de ropa con peso en el centro: por calor y carga bajan (flecha), y si hay viento se mecen. Necesitas dejar espacio suficiente para que nunca se toquen ni se acerquen al acero.',
+      'Dos cables colgados entre torres se parecen a dos cuerdas de ropa con peso en el centro: por calor y carga bajan (flecha). Necesitas dejar espacio suficiente para que nunca se toquen ni se acerquen al acero.',
     phenomenon:
-      'La separación entre fases debe soportar esfuerzos fase–fase y permitir movimiento por viento, temperatura y cargas. Una fórmula empírica da un valor preliminar; la altitud (δ < 1) y el criterio normativo pueden exigir una ventana mayor.',
+      'La separación entre fases debe soportar esfuerzos fase–fase y permitir movimiento por viento, temperatura y cargas. Una expresión empírica da un valor preliminar cuando faltan los datos finos del proyecto.',
     objective:
-      'Aplicar D ≈ K√(F+L) + Vₙ/150, contrastarla con el claro corregido por altitud y entender que el resultado es preliminar.',
+      'Aplicar D ≈ K√(F + L) + Vₙ/150 del ejemplo de la actividad 08 y reconocer qué término manda.',
     watch: [
       'La escena muestra DOS torres, el conductor con flecha a mitad del vano y la cota de separación D.',
-      'Baja δ a 0,74: la cota y la barra ámbar crecen por encima de 4,2 m.',
-      'En la gráfica, la parte geométrica no cambia con la tensión; el término eléctrico crece linealmente.',
+      'Sube Vₙ y mira cómo la barra ámbar del término eléctrico crece linealmente mientras la geométrica no cambia.',
+      'Aumenta F: el término geométrico crece con la raíz; el eléctrico queda fijo.',
     ],
     misconception:
-      'Tomar una fórmula empírica como distancia mínima universal o cambiar unidades sin ajustar K. Los coeficientes están atados a su metodología.',
-    model: 'Expresión histórica de predimensionamiento y claro NESC simplificado con factores 1,15 y 2,3 del curso. No sustituye el diseño normativo.',
+      'Tomar la expresión empírica como distancia mínima universal o cambiar unidades sin ajustar K. Los coeficientes están atados a su metodología.',
+    model: 'Expresión histórica de predimensionamiento de la actividad 08 (Expo 77, pp. 25–26). No sustituye la verificación final del proyecto ni la revisión de impulsos.',
   },
-  sources: ['expo77', 'guion', 'slides', 'cardona', 'velasco'],
+  sources: ['expo77'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
         { color: PAL.phase, label: 'Fase A' },
         { color: PAL.warn, label: 'Fase B' },
-        { color: PAL.ok, label: `D diseño = ${fmt(d.req, 2)} m` },
+        { color: PAL.ok, label: `D = ${fmt(d.demp, 2)} m` },
       ]}
       draw={(ctx, w, h) => {
         environment(ctx, w, h, { mood: 'day', groundY: h * 0.9, mountains: true });
-        sceneHeader(ctx, 'Vano completo entre dos torres', `F = ${fmt(p.F, 1)} m · L = ${fmt(p.L, 2)} m · Vₙ = ${fmt(p.Vn, 0)} kV · δ = ${fmt(p.delta, 2)}`);
+        sceneHeader(ctx, 'Vano completo entre dos torres', `F = ${fmt(p.F, 1)} m · L = ${fmt(p.L, 2)} m · Vₙ = ${fmt(p.Vn, 0)} kV`);
 
         const gy = h * 0.9;
         const x1 = w * 0.18;
@@ -397,12 +392,11 @@ const e11: Experiment = {
         const sA = insulatorString(ctx, x1 + w * 0.09, armY, 5, h * 0.11, 0, { discRadius: 8 });
         const sB = insulatorString(ctx, x2 - w * 0.09, armY, 5, h * 0.11, 0, { discRadius: 8 });
 
-        // Posiciones de dos fases separadas en altura de dibujo (representa separación horizontal)
+        // Separación dibujada según D (acotada para legibilidad)
         const aY = sA.endY + 5;
-        const bY = aY + Math.min(h * 0.22, d.req * h * 0.035 + 34);
+        const bY = aY + Math.min(h * 0.22, d.demp * h * 0.035 + 34);
         const sag = Math.min(h * 0.16, p.F * h * 0.012);
 
-        // Conductores con flecha animada
         for (const [col, yy] of [
           [PAL.phase, aY],
           [PAL.warn, bY],
@@ -419,24 +413,24 @@ const e11: Experiment = {
           circle(ctx, sB.endX, yy, 4.5, { fill: col });
         }
 
-        dimension(ctx, x1 + w * 0.03, aY, x1 + w * 0.03, bY, `D = ${fmt(d.req, 2)} m`, PAL.ok);
+        dimension(ctx, x1 + w * 0.03, aY, x1 + w * 0.03, bY, `D = ${fmt(d.demp, 2)} m`, PAL.ok);
         dimension(ctx, (x1 + x2) / 2 - 30, aY, (x1 + x2) / 2 - 30, aY + sag, `F = ${fmt(p.F, 1)} m`, PAL.muted);
 
         // Barras comparativas
         const bx = w * 0.63;
         const by = h * 0.18;
         const bw = w * 0.25;
-        const maxBar = Math.max(d.demp, d.dnesc, 1);
+        const maxBar = Math.max(d.termGeo, d.termElec, 1);
         const bar = (yy: number, label: string, val: number, col: string) => {
           text(ctx, label, bx, yy - 9, { size: 9.6, color: PAL.inkSoft });
           line(ctx, bx, yy, bx + bw, yy, { color: 'rgba(78,99,120,0.14)', width: 9, cap: 'butt' });
           line(ctx, bx, yy, bx + bw * (val / maxBar), yy, { color: col, width: 9, cap: 'butt' });
           text(ctx, `${fmt(val, 2)} m`, bx + bw + 6, yy, { size: 9.6, color: col, mono: true });
         };
-        bar(by, 'Fórmula empírica', d.demp, PAL.phase);
-        bar(by + 30, 'Claro corregido (NESC × 2,3)', d.dnesc, PAL.warn);
-        bar(by + 60, 'Diseño preliminar', d.req, PAL.ok);
-        pill(ctx, d.governs ? 'La altitud manda' : 'La geometría manda', bx, by + 92, { color: d.governs ? PAL.warn : PAL.ok });
+        bar(by, 'Término geométrico', d.termGeo, PAL.phase);
+        bar(by + 30, 'Término eléctrico', d.termElec, PAL.warn);
+        bar(by + 60, 'D preliminar', d.demp, PAL.ok);
+        pill(ctx, d.governs ? 'Manda Vₙ/150' : 'Manda K√(F+L)', bx, by + 92, { color: d.governs ? PAL.warn : PAL.ok });
       }}
       footer={
         <>
@@ -447,20 +441,16 @@ const e11: Experiment = {
   ),
   plot: ({ p, d }) => {
     const emp: [number, number][] = linspace(66, 550, 150).map((v) => [v, p.K * Math.sqrt(p.F + p.L) + v / 150]);
-    const nesc: [number, number][] = linspace(66, 550, 150).map((v) => [v, (3 + 0.2 * (v / p.delta - 8.7)) * 0.0254 * 1.15 * 2.3]);
     return (
       <Plot
         xDomain={[66, 550]}
-        yDomain={[0, Math.max(12, d.req * 1.3)]}
+        yDomain={[0, Math.max(12, d.demp * 1.3)]}
         xLabel="Tensión nominal entre fases Vₙ (kV)"
         yLabel="Separación requerida (m)"
-        series={[
-          { pts: emp, color: PAL.phase, width: 2.3, label: 'Fórmula empírica' },
-          { pts: nesc, color: PAL.warn, width: 2.3, dash: '5 4', label: `Claro corregido (δ = ${fmt(p.delta, 2)})` },
-        ]}
-        refs={[{ at: 4.2, label: 'Meta de altitud: 4,2 m', color: PAL.bad }]}
-        markers={[{ x: p.Vn, y: d.req, color: PAL.ok, label: `${fmt(d.req, 2)} m` }]}
-        caption="La curva azul crece por el término Vₙ/150; la ámbar se desplaza hacia arriba al bajar δ. Se instala el mayor de los dos criterios."
+        series={[{ pts: emp, color: PAL.phase, width: 2.3, label: 'D = K√(F + L) + Vₙ/150' }]}
+        refs={[{ at: p.K * Math.sqrt(p.F + p.L), label: `Aporta geométrico = ${fmt(p.K * Math.sqrt(p.F + p.L), 2)} m`, color: PAL.warn }]}
+        markers={[{ x: p.Vn, y: d.demp, color: PAL.ok, label: `${fmt(d.demp, 2)} m` }]}
+        caption="La recta crece con Vₙ/150 sobre un piso fijo geométrico. El punto marca la Vₙ elegida."
       />
     );
   },
@@ -616,14 +606,14 @@ const e12: Experiment = {
     watch: [
       'Mira los DOS arcos dibujados a escala: el rayo violeta sólido indica a dónde conecta; el punteado indica el objetivo bloqueado.',
       'Cambia a «Rayo débil con guarda abierta»: la esfera se encoge y el arco fuerte salta hacia la fase azul.',
-      'El ángulo de 38,7° del guion es solo geometría; por sí solo no demuestra que la línea esté protegida.',
+      'El 38,7° es solo geometría (ejemplo de la lámina 31); por sí solo no demuestra que la línea esté protegida.',
     ],
     misconception:
       'Concluir «línea protegida» solo porque α ≤ 30°, o creer que todos los rayos tienen la misma corriente. La falla de apantallamiento y el flameo inverso son mecanismos distintos.',
     model: 'Construcción electrogeométrica 2D con r_c = 10·I^0,65 y r_g del material. No incluye flecha, terreno ni líderes ascendentes.',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'cardona', 'velasco', 'expo'],
-  notes: ['El valor 38,7° aparece en el guion como cálculo geométrico, no como prueba de protección.'],
+  sources: ['expo77', 'expo39'],
+  notes: ['El 38,7° aparece en la lámina 31 como cálculo geométrico, no como prueba de protección.'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[

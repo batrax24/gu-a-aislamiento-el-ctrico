@@ -1,5 +1,5 @@
-import { fmt, linspace, normalCdf, normalQuantile } from '../../lib/num';
-import { PAL, circle, dimension, electricArc, environment, glow, insulatorString, latticeTower, line, pill, sceneHeader, stormCloud, text } from '../../lib/draw';
+import { fmt, impulseShape, linspace, lognormalExceed, normalCdf, normalQuantile } from '../../lib/num';
+import { PAL, circle, electricArc, environment, glow, insulatorString, latticeTower, line, pill, sceneHeader, stormCloud, text } from '../../lib/draw';
 import { Plot, SceneCanvas } from '../../components/ui';
 import type { Experiment } from '../types';
 
@@ -22,7 +22,21 @@ const e04: Experiment = {
       max: 200,
       step: 1,
       def: 31,
-      help: '31 kA es la mediana: la mitad de los rayos son menores y la mitad mayores.',
+      help: '31 kA es el valor representativo (lámina 29); la mediana lognormal es 29,96 kA (lámina 25).',
+    },
+    {
+      id: 'pol',
+      group: 'Severidad de la descarga',
+      label: 'Polaridad de la descarga',
+      min: 0,
+      max: 1,
+      step: 1,
+      def: 0,
+      options: [
+        { value: 0, label: 'Negativa (≈ 90 %)' },
+        { value: 1, label: 'Positiva (< 10 %)' },
+      ],
+      help: 'Las descargas a tierra son ~90 % negativas (lámina 18). La positiva tiene cola más pesada (σ_ln = 1,23, Ī = 35,16 kA).',
     },
     {
       id: 'didt',
@@ -44,7 +58,7 @@ const e04: Experiment = {
       max: 20,
       step: 0.5,
       def: 5,
-      help: 'Colombia tiene zonas de muy alta actividad ceráunica (5 a 20+ rayos/km²·año).',
+      help: 'N_g varía entre 0 y 20 rayos/km²·año; los mapas promedian ≥ 5 años; sin red de localización se estima con días de tormenta T_d (lámina 30).',
     },
     {
       id: 'largo',
@@ -67,68 +81,82 @@ const e04: Experiment = {
       def: 40,
       help: 'Torres más altas «atraen» rayos desde una franja de terreno más ancha.',
     },
+    {
+      id: 'b',
+      group: 'Exposición geográfica de la línea',
+      label: 'Separación entre cables de guarda (b)',
+      unit: 'm',
+      min: 0,
+      max: 15,
+      step: 0.5,
+      def: 7,
+      help: 'Término b del modelo de captación N_s = N_g·(28·h^0,6 + b)/10 (lámina 35).',
+    },
   ],
   presets: [
     {
       id: 'mediana',
-      label: 'Rayo mediano típico (31 kA)',
-      note: 'El 50 % de los rayos supera los 31 kA. Distancia de atracción r_c ≈ 93 m.',
-      values: { i: 31, didt: 30, gfd: 5, largo: 100, h: 40 },
+      label: 'Rayo representativo (31 kA, negativa)',
+      note: 'Valor más representativo (lámina 29). La mediana lognormal es 29,96 kA (lámina 25); r_c ≈ 93,5 m.',
+      values: { i: 31, pol: 0, didt: 30, gfd: 5, largo: 100, h: 40, b: 7 },
     },
     {
       id: 'severa',
       label: 'Rayo extremo (100 kA, 80 kA/µs)',
-      note: 'Muy poco frecuente (~3,6 % de probabilidad), pero con enorme distancia de captura (~200 m) y gran efecto inductivo.',
-      values: { i: 100, didt: 80, gfd: 5, largo: 100, h: 40 },
+      note: 'Muy poco frecuente: ≈ 3,2 % de las descargas negativas supera 100 kA (lámina 25). r_c ≈ 200 m.',
+      values: { i: 100, pol: 0, didt: 80, gfd: 5, largo: 100, h: 40, b: 7 },
     },
     {
       id: 'debil',
       label: 'Rayo pequeño (10 kA)',
-      note: 'Casi el 96 % de los rayos lo supera, pero por tener r_c pequeño (45 m) es el que más fácil burla al cable de guarda.',
-      values: { i: 10, didt: 12, gfd: 5, largo: 100, h: 40 },
+      note: '≈ 95 % de las descargas negativas supera 10 kA (lámina 25); su r_c (≈ 45 m) es la que más fácil burla al cable de guarda.',
+      values: { i: 10, pol: 0, didt: 12, gfd: 5, largo: 100, h: 40, b: 7 },
     },
   ],
   compute: (p) => {
-    const median = 31;
-    const sigmaLn = 0.65;
-    const exceed = 1 - normalCdf(Math.log(p.i / median) / sigmaLn);
-    const rc = 10 * Math.pow(p.i, 0.65);
-    const anchoKm = (28 * Math.pow(p.h, 0.6)) / 1000;
-    const flashes = p.gfd * anchoKm * p.largo;
-    return { exceed, rc, anchoKm, flashes, lDidt: p.didt };
+    const neg = p.pol === 0;
+    const mean = neg ? 29.96 : 35.16;
+    const sigma = neg ? 0.65 : 1.23;
+    const exceed = lognormalExceed(p.i, neg ? 'negativa' : 'positiva');
+    const rc = 10 * Math.pow(Math.max(1e-9, p.i), 0.65); // lámina 40 (Expo 77)
+    const ns = (p.gfd * (28 * Math.pow(p.h, 0.6) + p.b)) / 10; // impactos/100 km·año, lámina 35 (Expo 77)
+    const flashes = (ns * p.largo) / 100;
+    return { exceed, rc, ns, flashes, mean, sigma, lDidt: p.didt };
   },
   liveStatus: (p, d) => ({
     tone: d.exceed <= 0.05 ? 'ok' : d.exceed <= 0.25 ? 'warn' : 'info',
     badge: `I = ${fmt(p.i, 0)} kA · Solo ${fmt(d.exceed * 100, 1)} % de rayos la supera`,
-    message: `Esta línea de ${fmt(p.largo, 0)} km recibe ~${fmt(d.flashes, 0)} impactos/año. Un rayo de ${fmt(p.i, 0)} kA «elige» objetivo desde r_c = ${fmt(d.rc, 0)} m.`,
+    message: `Esta línea de ${fmt(p.largo, 0)} km recibe ~${fmt(d.flashes, 0)} impactos/año (N_s = ${fmt(d.ns, 0)}/100 km·año). Un rayo de ${fmt(p.i, 0)} kA «elige» objetivo desde r_c = ${fmt(d.rc, 0)} m.`,
   }),
   readings: (d, p) => [
     {
       label: 'Rayos que superan esta corriente',
       value: `${fmt(d.exceed * 100, 1)} %`,
-      sub: 'curva lognormal (mediana 31 kA)',
+      sub: `lognormal (${p.pol === 0 ? 'negativa' : 'positiva'}: Ī = ${fmt(d.mean, 2)} kA, σ_ln = ${fmt(d.sigma, 2)})`,
       tone: d.exceed <= 0.05 ? 'ok' : d.exceed < 0.2 ? 'warn' : 'bad',
     },
-    { label: 'Distancia de choque r_c', value: `${fmt(d.rc, 1)} m`, sub: 'radio de atracción 10·I^0,65' },
+    { label: 'Distancia de choque r_c', value: `${fmt(d.rc, 1)} m`, sub: 'r_c = 10·I^0,65 (Expo 77, lámina 40)' },
     { label: 'Efecto inductivo por µH', value: `${fmt(p.didt, 0)} kV/µH`, sub: 'voltaje extra en torres y bajantes' },
-    { label: 'Impactos esperados en la línea', value: `${fmt(d.flashes, 0)} /año`, sub: `franja de captura de ${fmt(d.anchoKm * 1000, 0)} m de ancho` },
+    { label: 'Captación estimada N_s', value: `${fmt(d.ns, 0)} /100 km·año`, sub: 'N_g·(28·h^0,6 + b)/10 (lámina 35)' },
+    { label: 'Impactos esperados en la línea', value: `${fmt(d.flashes, 0)} /año`, sub: `sobre ${fmt(p.largo, 0)} km, N_s prorrateado` },
   ],
   equations: (p, d) => [
-    `Probabilidad de exceder I: P(I > ${fmt(p.i, 0)} kA) = 1 − Φ(ln(${fmt(p.i, 0)}/31) / 0,65) = ${fmt(d.exceed * 100, 1)} %`,
-    `Distancia de atracción: r_c = 10 · ${fmt(p.i, 0)}^0,65 = ${fmt(d.rc, 1)} m`,
-    `Impactos anuales: N ≈ ${fmt(p.gfd, 1)} × (${fmt(d.anchoKm * 1000, 0)} m / 1000) × ${fmt(p.largo, 0)} km = ${fmt(d.flashes, 0)} rayos/año`,
+    `P(I ≥ ${fmt(p.i, 0)} kA) = 1 − Φ((ln ${fmt(p.i, 0)} − ln ${fmt(d.mean, 2)}) / ${fmt(d.sigma, 2)}) = ${fmt(d.exceed * 100, 1)} %  (lámina 25)`,
+    `Forma cerrada (lámina 26, ec. 3.4): P ≈ 1 / (1 + (I/31)^2,6) = ${fmt(100 / (1 + Math.pow(p.i / 31, 2.6)), 1)} %`,
+    `Distancia de atracción: r_c = 10 · ${fmt(p.i, 0)}^0,65 = ${fmt(d.rc, 1)} m  (Expo 77, lámina 40)`,
+    `N_s = N_g·(28·h^0,6 + b)/10 = ${fmt(p.gfd, 1)}×(28×${fmt(p.h, 0)}^0,6 + ${fmt(p.b, 1)})/10 = ${fmt(d.ns, 0)} /100 km·año  (lámina 35)`,
     `Voltaje inductivo: L · di/dt = ${fmt(p.didt, 0)} kV por cada 1 µH de inductancia`,
   ],
   checks: () => [
-    { label: 'La corriente de rayo se trata como probabilidad', ok: true, detail: 'diseñar para el 5 % cubre el 95 % de los rayos' },
-    { label: 'Tres caminos separados: fase, guarda/torre y suelo vecino', ok: true, detail: 'cada uno se mitiga distinto' },
+    { label: 'La corriente de rayo se trata como probabilidad', ok: true, detail: 'el diseño a 5 % de excedencia cubre el 95 % de los rayos' },
+    { label: 'Tres caminos separados: fase, guarda/torre y suelo vecino', ok: true, detail: 'impacto directo, flameo inverso e inducida (láminas 32–33)' },
     { label: 'Importa tanto el pico (kA) como la rapidez di/dt (kA/µs)', ok: true, detail: 'di/dt eleva el potencial inductivo' },
   ],
   goals: [
     {
       id: 'g1',
       label: 'Sube la corriente de diseño hasta que solo el 5 % o menos de los rayos la supere',
-      tip: 'Desliza la corriente I hacia arriba (~91 kA o más) o prueba «Rayo extremo (100 kA)».',
+      tip: 'Desliza la corriente I hacia arriba (~87 kA o más en negativas) o prueba «Rayo extremo (100 kA)».',
       test: (_p, d) => d.exceed <= 0.05,
       detail: (_p, d) => `excedencia actual: ${fmt(d.exceed * 100, 1)} % (meta: ≤ 5 %)`,
     },
@@ -155,9 +183,9 @@ const e04: Experiment = {
     ],
     misconception:
       'Afirmar que «un rayo tiene 30 kA». 31 kA es apenas la mediana: uno de cada veinte rayos supera los 90 kA, y los pequeños de 8–12 kA son los que más fácil esquivan el cable de guarda.',
-    model: 'Distribución lognormal (mediana 31 kA, σ_ln = 0,65) y r_c = 10·I^0,65 del modelo electrogeométrico del curso.',
+    model: 'Distribución lognormal de la lámina 25: negativas Ī = 29,96 kA, σ_ln = 0,65; positivas Ī = 35,16 kA, σ_ln = 1,23. N_s = N_g·(28·h^0,6 + b)/10 (Expo 77, lámina 35); r_c = 10·I^0,65 (lámina 40).',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'velasco', 'expo'],
+  sources: ['expo39', 'expo77'],
   notes: ['Recuerda: la onda 8/20 µs usada en pararrayos es una onda de corriente (kA), distinta de la onda de voltaje 1,2/50 µs (kV).'],
   scene: ({ p, d, t }) => {
     const stage = Math.floor(t / 2.6) % 3; // alterna claramente los 3 mecanismos
@@ -248,7 +276,7 @@ const e04: Experiment = {
     );
   },
   plot: ({ p, d }) => {
-    const pts: [number, number][] = linspace(2, 200, 200).map((x) => [x, (1 - normalCdf(Math.log(x / 31) / 0.65)) * 100]);
+    const pts: [number, number][] = linspace(2, 200, 200).map((x) => [x, lognormalExceed(x, p.pol === 0 ? 'negativa' : 'positiva') * 100]);
     return (
       <Plot
         xDomain={[2, 200]}
@@ -260,7 +288,7 @@ const e04: Experiment = {
         series={[{ pts, color: PAL.surge, width: 2.4, area: true, label: 'Probabilidad P(I > valor)' }]}
         refs={[{ at: 5, label: 'Meta 5 % (cubre el 95 % de rayos)', color: PAL.ok }]}
         markers={[{ x: p.i, y: d.exceed * 100, color: PAL.warn, label: `${fmt(p.i, 0)} kA (${fmt(d.exceed * 100, 1)} %)` }]}
-        caption="A 31 kA cae el 50 % de los rayos (mediana). Al subir hacia 90–100 kA, menos del 5 % de las descargas supera ese valor."
+        caption="Excedencia lognormal (lámina 25). En negativas la mediana es 29,96 kA y el 5 % de excedencia queda en ≈ 87 kA; el valor representativo de la lámina 29 es 31 kA / 2 µs / 50 µs / 4 descargas."
       />
     );
   },
@@ -268,287 +296,291 @@ const e04: Experiment = {
 
 /* =============================== e05 =============================== */
 
+const E05_STEPS: [number, number][] = [
+  [1e-7, 6.4], [1e-4, 6.4], [1e-4, 3.9], [1e-2, 3.9], [1e-2, 1.5], [1e1, 1.5], [1e1, 1.3], [1e3, 1.3],
+];
+
+const e05puAt = (t: number): number => {
+  if (t <= 1e-4) return 6.4;
+  if (t <= 1e-2) return 3.9;
+  if (t <= 1e1) return 1.5;
+  return 1.3;
+};
+
+const e05Zone = (t: number): 'atmosférica' | 'maniobra' | 'temporal' => {
+  if (t <= 20e-6) return 'atmosférica';
+  if (t <= 5e-3) return 'maniobra';
+  return 'temporal';
+};
+
 const e05: Experiment = {
   id: 'e05',
   topicId: 4,
-  contextLabel: '¿Cuándo salta una chispa en el aire?',
-  title: 'Avalancha de electrones: por qué se rompe el aire',
-  tagline: 'Dos electrodos, moléculas de aire y la reacción en cadena que enciende un arco eléctrico',
-  why: 'Ver físicamente cómo el campo eléctrico, la distancia y la altitud (densidad del aire) deciden si el aire aísla o deja saltar una chispa.',
+  contextLabel: 'Tensión DC, AC e impulso',
+  title: 'Ruptura en gases: DC, AC e impulso',
+  tagline: 'El mismo espacio de aire se rompe distinto según cómo se le aplique la tensión',
+  why: 'Distinguir los tres regímenes de ruptura descritos en las láminas 34–36 y entender por qué la duración de la tensión forma parte de la soportabilidad.',
   params: [
     {
-      id: 'e',
-      label: 'Campo eléctrico entre las placas (E)',
-      unit: 'kV/cm',
-      min: 10,
-      max: 80,
-      step: 0.5,
-      def: 30,
-      help: 'A nivel del mar, el aire empieza a ionizarse por encima de ~25 kV/cm y rompe cerca de 30 kV/cm en 1 cm.',
-    },
-    {
-      id: 'd',
-      label: 'Separación de aire entre electrodos (d)',
-      unit: 'cm',
-      min: 0.1,
-      max: 20,
-      step: 0.05,
-      def: 1,
-      help: 'Al separar los electrodos sube el voltaje U₀ que el espacio de aire logra sostener.',
-    },
-    {
-      id: 'delta',
-      label: 'Densidad relativa del aire (δ)',
-      unit: '',
-      min: 0.6,
-      max: 1,
-      step: 0.01,
-      def: 1,
-      help: 'δ = 1,00 en la costa (0 m, 20 °C) · δ = 0,74 en Bogotá (2.640 m, 14 °C).',
+      id: 'tlog',
+      group: 'Visualización V–t',
+      label: 'Tiempo de la tensión aplicada (log₁₀ t)',
+      unit: 's',
+      min: -7,
+      max: 3.5,
+      step: 0.25,
+      def: -4,
+      help: 't = 10^(valor). −6 ≈ 1 µs (frente de rayo) · −3,6 ≈ 250 µs (frente de maniobra) · 0 ≈ 1 s (temporal).',
     },
   ],
   presets: [
     {
-      id: 'std',
-      label: 'Nivel del mar: 1 cm a 30 kV/cm',
-      note: 'Caso clásico de referencia: 30 kV en 1 cm alcanza justo ~10⁸ electrones (rigidez U₀ ≈ 30 kV).',
-      values: { e: 30, d: 1, delta: 1 },
+      id: 'rayo',
+      label: 'Impulso tipo rayo (t ≈ 1 µs)',
+      note: 'Frente rápido 0,1–20 µs (lámina 6). La ruptura queda gobernada por t_s + t_f (lámina 36); onda 1,2/50 µs.',
+      values: { tlog: -6 },
     },
     {
-      id: 'bogota',
-      label: 'Mismo espacio en Bogotá (δ = 0,74)',
-      note: 'Con menos moléculas de aire, 1 cm solo soporta U₀ ≈ 23,5 kV: ¡con 30 kV/cm salta la chispa de inmediato!',
-      values: { e: 30, d: 1, delta: 0.74 },
+      id: 'maniobra',
+      label: 'Impulso de maniobra (t ≈ 250 µs)',
+      note: 'Frente lento 20–5000 µs (lámina 6), frecuencias de 2–20 kHz (lámina 5); onda 250/2500 µs (lámina 36).',
+      values: { tlog: -3.6 },
     },
     {
-      id: 'gap',
-      label: 'Separación de 8 cm en la costa (sostiene 205 kV)',
-      note: 'En aire estándar (δ = 1), unos 7,8–8,0 cm sostienen 200 kV. En Bogotá necesitarás más de 10,5 cm.',
-      values: { e: 25, d: 8, delta: 1 },
+      id: 'temporal',
+      label: 'Temporal a frecuencia de red (t ≈ 1 s)',
+      note: 'Frecuencia igual o próxima a la de operación, de ms a segundos (lámina 5). Se evalúa en kV eficaces.',
+      values: { tlog: 0 },
     },
   ],
   compute: (p) => {
-    const A = 3.7;
-    const kStreamer = Math.log(1e8);
-    const eCrit = 25 * p.delta;
-    const alpha = A * (p.e - eCrit);
-    const lnN = alpha * p.d;
-    const logN = lnN / Math.LN10;
-    const breakdown = lnN >= kStreamer - 1e-9;
-    const u0 = Math.max(0, 25 * p.delta * p.d + kStreamer / A);
-    const uApplied = p.e * p.d;
-    return { eCrit, alpha, lnN, logN, breakdown: breakdown ? 1 : 0, u0, uApplied };
+    const t = Math.pow(10, p.tlog);
+    const pu = e05puAt(t);
+    const zone = e05Zone(t);
+    return { t, pu, zoneNumeric: zone === 'atmosférica' ? 0 : zone === 'maniobra' ? 1 : 2 };
   },
-  liveStatus: (p, d) => {
-    if (d.breakdown) {
-      return {
-        tone: 'bad',
-        badge: '✕ CHISPA / DESCARGA EN EL AIRE',
-        message: `Aplicas ${fmt(d.uApplied, 1)} kV y esos ${fmt(p.d, 2)} cm de aire solo aguantan U₀ = ${fmt(d.u0, 1)} kV: la avalancha supera 10⁸ electrones y salta el arco.`,
-      };
-    }
-    if (d.alpha > 0) {
+  liveStatus: (_p, d) => {
+    const zone = e05Zone(d.t);
+    if (zone === 'atmosférica') {
       return {
         tone: 'warn',
-        badge: 'PRECAUCIÓN · Avalancha incompleta (aún sostiene)',
-        message: `Hay ionización (10^${fmt(Math.max(0, d.logN), 1)} electrones), pero no alcanza 10⁸: el espacio soporta hasta U₀ = ${fmt(d.u0, 1)} kV (aplicas ${fmt(d.uApplied, 1)} kV).`,
+        badge: 'FRENTE RÁPIDO · Onda 1,2/50 µs',
+        message: `t = ${fmt(d.t * 1e6, 2)} µs: ruptura gobernada por los retardos t_s y t_f (lámina 36). Ensayo: impulso tipo rayo en kV de cresta.`,
+      };
+    }
+    if (zone === 'maniobra') {
+      return {
+        tone: 'ok',
+        badge: 'FRENTE LENTO · Onda 250/2500 µs',
+        message: `t = ${d.t < 1e-3 ? `${fmt(d.t * 1e6, 0)} µs` : `${fmt(d.t * 1e3, 1)} ms`}: sobretensión de maniobra, 2–20 kHz (lámina 5). Ensayo: impulso de maniobra en kV de cresta.`,
       };
     }
     return {
-      tone: 'ok',
-      badge: '✓ AIRE AISLANTE · Sostiene con holgura',
-      message: `El campo (${fmt(p.e, 1)} kV/cm) está por debajo del umbral ${fmt(d.eCrit, 1)} kV/cm. Esos ${fmt(p.d, 2)} cm aguantan U₀ = ${fmt(d.u0, 1)} kV.`,
+      tone: 'bad',
+      badge: 'TEMPORAL · Frecuencia de red',
+      message: `t = ${d.t >= 100 ? fmt(d.t, 0) : fmt(d.t, 2)} s: tensión de frecuencia industrial sostenida (lámina 5). Se evalúa en kV eficaces y con su duración, no con impulsos.`,
     };
   },
-  readings: (d, p) => [
-    {
-      label: 'Voltaje que aguanta el aire (U₀)',
-      value: `${fmt(d.u0, 1)} kV`,
-      sub: `para d = ${fmt(p.d, 2)} cm y δ = ${fmt(p.delta, 2)}`,
-      tone: d.breakdown ? 'bad' : 'ok',
-    },
-    {
-      label: 'Voltaje aplicado (E · d)',
-      value: `${fmt(d.uApplied, 1)} kV`,
-      sub: d.breakdown ? 'supera U₀ → salta arco' : 'menor que U₀ → aísla bien',
-      tone: d.breakdown ? 'bad' : 'ok',
-    },
-    { label: 'Umbral de ionización (25·δ)', value: `${fmt(d.eCrit, 1)} kV/cm`, sub: `baja con la altitud (δ = ${fmt(p.delta, 2)})` },
-    { label: 'Multiplicación de electrones', value: `10^${fmt(Math.max(0, d.logN), 1)}`, sub: 'salta arco al llegar a 10⁸' },
-    { label: 'Coeficiente neto α − η', value: `${fmt(d.alpha, 2)} cm⁻¹`, sub: d.alpha > 0 ? 'ganan choques ionizantes' : 'el aire frena los electrones' },
-  ],
+  readings: (d, p) => {
+    const zone = e05Zone(d.t);
+    const test =
+      zone === 'atmosférica'
+        ? 'Impulso tipo rayo 1,2/50 µs (kV cresta)'
+        : zone === 'maniobra'
+          ? 'Impulso de maniobra 250/2500 µs (kV cresta)'
+          : 'Frecuencia industrial (kV eficaces)';
+    return [
+      { label: 'Tiempo aplicado', value: d.t < 1e-3 ? `${fmt(d.t * 1e6, 2)} µs` : d.t < 1 ? `${fmt(d.t * 1e3, 1)} ms` : `${fmt(d.t, 2)} s`, sub: `t = 10^${fmt(p.tlog, 2)} s` },
+      { label: 'Familia por duración (láminas 5–6)', value: zone, sub: zone === 'atmosférica' ? 'frente rápido, 0,1–20 µs' : zone === 'maniobra' ? 'frente lento, 20–5000 µs' : 'ms–s, frecuencia de red' },
+      { label: 'Nivel típico en la curva V–t (lámina 12)', value: `${fmt(d.pu, 1)} p.u.`, sub: 'meseta aproximada de la figura' , tone: 'warn' },
+      { label: 'Ensayo de laboratorio', value: test, sub: 'misma forma y misma unidad, siempre' },
+      {
+        label: 'Mecanismo (láminas 34–36)',
+        value: zone === 'temporal' ? 'AC / DC sostenido' : 'impulso',
+        sub: zone === 'temporal' ? 'AC: iones oscilan sin cruzar; DC: carga espacial estacionaria' : 't_s (espera del electrón iniciador) + t_f (propagación del streamer)',
+      },
+    ];
+  },
   equations: (p, d) => [
-    `Ionización neta: α − η = 3,7 · (E − 25·δ) = 3,7 × (${fmt(p.e, 1)} − ${fmt(d.eCrit, 1)}) = ${fmt(d.alpha, 2)} cm⁻¹`,
-    `Tamaño de avalancha: n/n₀ = e^((α−η)·d) → log₁₀(n/n₀) = ${fmt(d.logN, 2)} (chispa si ≥ 8,0)`,
-    `Voltaje de ruptura del aire: U₀ = 25·δ·d + 5,0 = ${fmt(25 * p.delta * p.d, 1)} + 5,0 = ${fmt(d.u0, 1)} kV`,
-    `Comparación: U_aplicada = ${fmt(d.uApplied, 1)} kV frente a U₀ = ${fmt(d.u0, 1)} kV → ${d.breakdown ? 'DESCARGA' : 'SOSTIENE'}`,
+    `t = 10^${fmt(p.tlog, 2)} s = ${d.t < 1e-3 ? `${fmt(d.t * 1e6, 2)} µs` : d.t < 1 ? `${fmt(d.t * 1e3, 1)} ms` : `${fmt(d.t, 2)} s`}`,
+    `Nivel V–t (figura de la lámina 12): ${fmt(d.pu, 1)} p.u.`,
+    'DC: las cargas migran ordenadas → régimen estacionario de carga espacial (lámina 34).',
+    'AC: los iones lentos oscilan sin cruzar el entrehierro (lámina 35).',
+    'Impulso: t_s (estadístico: espera del electrón libre) + t_f (formativo: propagación del streamer) gobiernan la ruptura (lámina 36).',
   ],
-  checks: (_p, d) => [
-    { label: 'Condición para iniciar avalancha (α > η)', ok: d.alpha > 0, detail: `α − η = ${fmt(d.alpha, 2)} cm⁻¹` },
-    { label: 'El aire resiste sin saltar arco (n < 10⁸)', ok: d.breakdown === 0, detail: d.breakdown ? 'se formó canal conductor' : 'sin canal conductor' },
-    { label: 'En altura (δ menor) se necesitan más cm para el mismo voltaje', ok: true, detail: `umbral actual ${fmt(d.eCrit, 1)} kV/cm` },
+  checks: () => [
+    { label: 'Se declaran frecuencia y duración, no solo el pico', ok: true, detail: 'láminas 3–6' },
+    { label: 'Impulsos en kV de cresta; temporales en kV eficaces', ok: true, detail: 'misma regla para todas las comparaciones' },
+    { label: 'La ruptura por impulso considera t_s y t_f', ok: true, detail: 'no basta el valor instantáneo' },
   ],
   goals: [
     {
       id: 'g1',
       kind: 'exploracion',
-      label: 'Al nivel del mar (δ = 1,00), halla la distancia mínima que aguanta 200 kV (U₀ entre 200 y 212 kV)',
-      tip: 'Pon δ = 1,00 y lleva la separación d cerca de 7,8–8,2 cm (o pulsa el tercer escenario).',
-      test: (p, d) => Math.abs(p.delta - 1) < 0.02 && d.u0 >= 200 && d.u0 <= 212,
-      detail: (p, d) => `U₀ = ${fmt(d.u0, 1)} kV con d = ${fmt(p.d, 2)} cm y δ = ${fmt(p.delta, 2)}`,
+      label: 'Lleva el cursor a la zona de impulsos rápidos (t ≤ 20 µs)',
+      tip: 'Baja log₁₀ t hasta −4,7 o menos (usa el escenario «Impulso tipo rayo»).',
+      test: (_p, d) => d.t <= 20e-6,
+      detail: (_p, d) => `t = ${fmt(d.t * 1e6, 2)} µs`,
     },
     {
       id: 'g2',
-      label: 'En Bogotá (δ = 0,74), separa más los electrodos hasta volver a aguantar 200 kV (U₀ entre 200 y 215 kV)',
-      tip: 'Baja δ a 0,74 y aumenta la separación d hasta unos 10,6–11,2 cm: verás cuántos cm extra exige la altitud.',
-      test: (p, d) => Math.abs(p.delta - 0.74) < 0.02 && d.u0 >= 200 && d.u0 <= 215,
-      detail: (p, d) => `U₀ = ${fmt(d.u0, 1)} kV con d = ${fmt(p.d, 2)} cm y δ = ${fmt(p.delta, 2)}`,
+      kind: 'exploracion',
+      label: 'Investiga la meseta temporal: llega a t ≥ 100 s',
+      tip: 'Sube log₁₀ t por encima de 2 (por ejemplo 2,25 ≈ 178 s).',
+      test: (_p, d) => d.t >= 100,
+      detail: (_p, d) => `t = ${fmt(d.t, 1)} s`,
     },
   ],
+  quiz: {
+    question: '¿Por qué un aislamiento puede soportar un pico de 900 kV en impulso 1,2/50 µs y aun así romper a 500 kV en DC?',
+    options: [
+      { id: 'a', label: 'Porque en DC las cargas tienen tiempo de migrar y formar un canal estable; en el impulso, la ruptura necesita t_s + t_f que pueden superar la duración del frente.' },
+      { id: 'b', label: 'Porque el impulso siempre es de menor voltaje que la DC.' },
+      { id: 'c', label: 'Porque el aire se comporta como conductor perfecto en DC.' },
+      { id: 'd', label: 'No puede ocurrir: la ruptura solo depende del valor pico.' },
+    ],
+    correct: 'a',
+    explanation:
+      'En DC se establece un régimen estacionario de carga espacial (lámina 34); en AC los iones oscilan sin cruzar (lámina 35). En impulso, la ruptura queda gobernada por t_s (espera del electrón iniciador) y t_f (propagación del streamer): si el pico pasa antes de t_s + t_f, el aislamiento soporta un voltaje mucho mayor que en estado estacionario (lámina 36).',
+  },
   learn: {
     analogy:
-      'Imagina una ficha de dominó que golpea a 2, esas 2 a 4, esas 4 a 8… Un solo electrón libre acelerado por el voltaje choca con moléculas de aire y suelta más electrones. Cuando la bola de nieve llega a 100 millones (10⁸), el aire se vuelve un cable luminoso y salta el arco.',
+      'Es como empujar una puerta con un golpe seco o apoyarse sobre ella varios segundos: el golpe (impulso) puede ser enorme en fuerza durante un instante sin moverla; el peso sostenido (temporal) la vence con menos fuerza pero durante mucho tiempo.',
     phenomenon:
-      'El aire no tiene un número mágico fijo: se rompe cuando los electrones ganan suficiente energía entre choques para multiplicarse exponencialmente. En Bogotá (δ = 0,74) las moléculas están más separadas, así que el umbral baja y hace falta más distancia de aire.',
+      'Ante DC, las cargas espaciales migran de forma ordenada y continua hacia los electrodos opuestos, estableciendo un régimen estacionario (lámina 34). Ante AC, la inversión de cada medio ciclo impide que los iones positivos lentos crucen el espacio y quedan oscilando (lámina 35). Ante un impulso de microsegundos, la ruptura queda gobernada por el tiempo estadístico t_s y el tiempo formativo t_f (lámina 36).',
     objective:
-      'Comprender por qué la rigidez del aire depende de la separación y de la densidad δ, y comprobar que sostener 200 kV exige ~8 cm en la costa pero ~10,8 cm en Bogotá.',
+      'Leer una curva V–t, reconocer las tres familias de sobretensión y relacionar la unidad de ensayo correcta con cada una.',
     watch: [
-      'Compara «Nivel del mar» con «Mismo espacio en Bogotá»: verás menos moléculas en la cámara y la chispa saltando más fácil.',
-      'Separa los electrodos con el control d: las dos placas metálicas se alejan en vivo y sube U₀.',
-      'En la gráfica, la línea ámbar (Bogotá) va por debajo de la azul (mar): para llegar a la línea de 200 kV debes moverte más a la derecha (más cm).',
+      'Mueve el control de tiempo desde µs hasta segundos y mira cómo cambia la familia: rayo → maniobra → temporal.',
+      'En la gráfica, baja hasta la meseta de atmosféricas (≈ 6,4 p.u.) y sube hasta la de temporales (≈ 1,5 p.u.).',
+      'En la escena, las tres ondas de prueba se dibujan a la misma escala; la zona activa se ilumina.',
     ],
     misconception:
-      'Repetir de memoria que «el aire siempre aguanta 30 kV/cm». Eso solo aplica en campo uniforme, 1 cm y aire estándar; con puntas metálicas, distancias largas o altitud andina aguanta menos por centímetro.',
-    model: 'Campo uniforme entre placas paralelas con α − η = 3,7·(E − 25·δ) y criterio de streamer n = 10⁸. No incluye efecto de puntas ni humedad.',
+      'Evaluar una sobretensión solo por su pico: la misma altura de 3 p.u. puede significar cosas distintas según la duración, y el aire responde distinto a un impulso y a una tensión sostenida.',
+    model: 'Clasificación por duración y frecuencia según las láminas 5–6 y curva V–t cualitativa según la figura de la lámina 12. Las tolerancias del ensayo corresponden a la norma de técnicas de ensayo, fuera del alcance de las láminas; para U₅₀ y dispersión ver e06.',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'velasco', 'corona'],
-  scene: ({ p, d, t }) => {
-    const firing = d.breakdown === 1;
+  sources: ['expo39'],
+  scene: ({ d, t }) => {
+    const zone = e05Zone(d.t);
+    const lanes: { name: string; sub: string; color: string; draw: (ctx: CanvasRenderingContext2D, x: number, y: number, w: number) => void }[] = [
+      {
+        name: 'RAYO',
+        sub: '1,2/50 µs · cresta',
+        color: zone === 'atmosférica' ? PAL.surgeBright : 'rgba(140,155,175,0.5)',
+        draw: (ctx, x, y, w) => {
+          ctx.save();
+          ctx.strokeStyle = zone === 'atmosférica' ? PAL.surgeBright : 'rgba(140,155,175,0.55)';
+          ctx.lineWidth = zone === 'atmosférica' ? 3 : 1.6;
+          ctx.beginPath();
+          for (let i = 0; i <= 200; i++) {
+            const u = i / 200;
+            const xx = x + u * w;
+            const yy = y - impulseShape(u * 260, 0.41, 66) * 44;
+            if (i === 0) ctx.moveTo(xx, yy);
+            else ctx.lineTo(xx, yy);
+          }
+          ctx.stroke();
+          ctx.restore();
+        },
+      },
+      {
+        name: 'MANIOBRA',
+        sub: '250/2500 µs · cresta',
+        color: zone === 'maniobra' ? PAL.warnBright : 'rgba(140,155,175,0.5)',
+        draw: (ctx, x, y, w) => {
+          ctx.save();
+          ctx.strokeStyle = zone === 'maniobra' ? PAL.warnBright : 'rgba(140,155,175,0.55)';
+          ctx.lineWidth = zone === 'maniobra' ? 3 : 1.6;
+          ctx.beginPath();
+          for (let i = 0; i <= 200; i++) {
+            const u = i / 200;
+            const xx = x + u * w;
+            const yy = y - impulseShape(u * 300, 30, 2600) * 44;
+            if (i === 0) ctx.moveTo(xx, yy);
+            else ctx.lineTo(xx, yy);
+          }
+          ctx.stroke();
+          ctx.restore();
+        },
+      },
+      {
+        name: 'TEMPORAL',
+        sub: 'frecuencia industrial · eficaces',
+        color: zone === 'temporal' ? PAL.badBright : 'rgba(140,155,175,0.5)',
+        draw: (ctx, x, y, w) => {
+          ctx.save();
+          ctx.strokeStyle = zone === 'temporal' ? PAL.badBright : 'rgba(140,155,175,0.55)';
+          ctx.lineWidth = zone === 'temporal' ? 3 : 1.6;
+          ctx.beginPath();
+          for (let i = 0; i <= 260; i++) {
+            const u = i / 260;
+            const xx = x + u * w;
+            const yy = y - Math.sin(u * Math.PI * 5 - t * 2.5) * 40;
+            if (i === 0) ctx.moveTo(xx, yy);
+            else ctx.lineTo(xx, yy);
+          }
+          ctx.stroke();
+          ctx.restore();
+        },
+      },
+    ];
     return (
       <SceneCanvas
         legend={[
-          { color: 'rgba(11,99,206,0.45)', label: `Moléculas de aire (δ = ${fmt(p.delta, 2)})` },
-          { color: firing ? PAL.bad : PAL.surge, label: 'Avalancha de electrones (e⁻)' },
-          { color: PAL.ok, label: `Rigidez U₀ = ${fmt(d.u0, 1)} kV` },
+          { color: PAL.surgeBright, label: 'Rayo 1,2/50 µs' },
+          { color: PAL.warnBright, label: 'Maniobra 250/2500 µs' },
+          { color: PAL.badBright, label: 'Temporal (frecuencia de red)' },
         ]}
         draw={(ctx, w, h) => {
           environment(ctx, w, h, { mood: 'lab' });
-          sceneHeader(
-            ctx,
-            'Cámara de electrodos en aire',
-            p.delta < 0.8 ? `Aire de montaña (δ = ${fmt(p.delta, 2)})` : `Aire denso (δ = ${fmt(p.delta, 2)})`,
-          );
-
-          // Cámara transparente
-          const cx = w * 0.5;
-          const cy = h * 0.52;
-          const chW = w * 0.82;
-          const chH = h * 0.62;
-          ctx.save();
-          ctx.fillStyle = firing ? 'rgba(254, 242, 242, 0.9)' : 'rgba(235, 245, 255, 0.72)';
-          ctx.strokeStyle = firing ? PAL.bad : '#B6C7D9';
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.roundRect(cx - chW / 2, cy - chH / 2, chW, chH, 14);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-
-          // Moléculas de aire (proporcionales a delta)
-          const molCount = Math.round(18 + Math.pow((p.delta - 0.55) / 0.45, 1.3) * 58);
-          for (let i = 0; i < molCount; i++) {
-            const mx = cx - chW * 0.44 + ((i * 73) % (chW * 0.88));
-            const my = cy - chH * 0.4 + ((i * 53) % (chH * 0.8));
-            circle(ctx, mx + Math.sin(t + i) * 2, my + Math.cos(t * 0.8 + i) * 2, 2.1, {
-              fill: 'rgba(78, 130, 185, 0.28)',
-            });
-          }
-
-          // Electrodos con separación visual proporcional a d
-          const halfGap = Math.min(chW * 0.34, Math.max(22, 22 + (p.d / 20) * (chW * 0.31)));
-          const x1 = cx - halfGap;
-          const x2 = cx + halfGap;
-          const plateH = chH * 0.52;
-
-          // Soportes y placas metálicas redondeadas
-          line(ctx, cx - chW / 2, cy, x1 - 12, cy, { color: PAL.steel, width: 5 });
-          line(ctx, x2 + 12, cy, cx + chW / 2, cy, { color: PAL.steel, width: 5 });
-          ctx.save();
-          ctx.fillStyle = '#5C7288';
-          ctx.strokeStyle = '#2E4052';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.roundRect(x1 - 12, cy - plateH / 2, 12, plateH, 5);
-          ctx.roundRect(x2, cy - plateH / 2, 12, plateH, 5);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-          text(ctx, '−', x1 - 6, cy, { color: '#FFFFFF', weight: 700, size: 13, align: 'center', mono: true });
-          text(ctx, '+', x2 + 6, cy, { color: '#FFFFFF', weight: 700, size: 13, align: 'center', mono: true });
-
-          // Nube en abanico de avalancha de electrones
-          if (d.alpha > 0) {
-            const count = 48;
-            const gap = x2 - x1;
-            for (let i = 0; i < count; i++) {
-              const u = ((i / count) + t * 0.45) % 1;
-              const grow = Math.min(1, Math.max(0, (d.alpha * p.d * u) / Math.log(1e8)));
-              const spread = 3 + grow * (plateH * 0.36);
-              const px = x1 + 3 + u * (gap - 6);
-              const py = cy + Math.sin(i * 2.399) * spread;
-              circle(ctx, px, py, 1.5 + grow * 2.4, {
-                fill: firing ? PAL.bad : PAL.surge,
-                alpha: 0.25 + grow * 0.65,
-              });
-            }
-          }
-
-          if (firing) {
-            glow(ctx, cx, cy, halfGap * 0.9, PAL.bad, 0.22);
-            electricArc(ctx, x1, cy, x2, cy, t * 5, PAL.bad, 3);
-            pill(ctx, '⚡ ARCO ELÉCTRICO (n ≥ 10⁸)', cx, cy - plateH * 0.56, { color: PAL.bad, align: 'center' });
-          } else {
-            pill(ctx, `✓ Sin arco · Aguanta hasta ${fmt(d.u0, 1)} kV`, cx, cy - plateH * 0.56, { color: PAL.ok, align: 'center' });
-          }
-
-          dimension(ctx, x1, cy + plateH * 0.58, x2, cy + plateH * 0.58, `d = ${fmt(p.d, 2)} cm`, PAL.phase);
-          pill(ctx, `Aplicado: ${fmt(d.uApplied, 1)} kV (${fmt(p.e, 1)} kV/cm)`, w - 14, 21, {
-            color: firing ? PAL.bad : PAL.phase,
-            align: 'right',
-            mono: true,
+          sceneHeader(ctx, 'Las tres ondas de prueba, a la misma escala', 'La franja iluminada corresponde a la familia activa');
+          const lx = w * 0.08;
+          const lw = w * 0.84;
+          const laneH = (h - 70) / 3;
+          lanes.forEach((lane, i) => {
+            const yTop = 46 + i * laneH;
+            const active =
+              (i === 0 && zone === 'atmosférica') || (i === 1 && zone === 'maniobra') || (i === 2 && zone === 'temporal');
+            ctx.save();
+            ctx.fillStyle = active ? 'rgba(11, 99, 206, 0.06)' : 'rgba(255,255,255,0.55)';
+            ctx.strokeStyle = active ? lane.color : '#CBD5E1';
+            ctx.lineWidth = active ? 2 : 1.2;
+            ctx.beginPath();
+            ctx.roundRect(lx - 6, yTop, lw + 12, laneH - 12, 12);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            text(ctx, lane.name, lx + 6, yTop + 18, { size: 12, weight: 800, color: active ? '#0B3B66' : PAL.muted, mono: true });
+            text(ctx, lane.sub, lx + 6, yTop + 34, { size: 9, color: PAL.muted });
+            const waveX = lx + lw * 0.22;
+            const waveW = lw * 0.72;
+            const waveY = yTop + laneH * 0.62;
+            line(ctx, waveX - 8, waveY, waveX + waveW + 8, waveY, { color: 'rgba(78,99,120,0.25)', width: 1 });
+            lane.draw(ctx, waveX, waveY, waveW);
+            if (active) pill(ctx, 'ACTIVA', lx + lw - 4, yTop + 18, { color: lane.color, align: 'right', mono: true, size: 9.5 });
           });
         }}
         footer={
           <>
-            <strong>Observa el cono entre las placas:</strong> los electrones salen del electrodo negativo (−) y se multiplican hacia el positivo (+). Si llegan a 10⁸ antes de terminar el recorrido, salta el arco.
+            <strong>Las tres ondas existen en el laboratorio:</strong> el simulador las agrupa porque cada una prueba cosas distintas. Abajo mueves el tiempo y la curva V–t dice qué soportada corresponde.
           </>
         }
       />
     );
   },
-  plot: ({ p, d }) => {
-    const kTerm = Math.log(1e8) / 3.7;
-    const sea: [number, number][] = linspace(0.2, 20, 140).map((x) => [x, 25 * 1 * x + kTerm]);
-    const bog: [number, number][] = linspace(0.2, 20, 140).map((x) => [x, 25 * 0.74 * x + kTerm]);
-    return (
-      <Plot
-        xDomain={[0, 20]}
-        yDomain={[0, 420]}
-        xLabel="Separación de aire entre electrodos d (cm)"
-        yLabel="Voltaje de ruptura U₀ (kV)"
-        series={[
-          { pts: sea, color: PAL.phase, width: 2.3, label: 'Nivel del mar (δ = 1,00)' },
-          { pts: bog, color: PAL.warn, dash: '5 4', width: 2.2, label: 'Bogotá 2.640 m (δ = 0,74)' },
-        ]}
-        refs={[{ at: 200, label: 'Meta del reto: sostener 200 kV', color: PAL.ok }]}
-        markers={[
-          { x: p.d, y: d.u0, color: PAL.porcelain, label: `U₀ = ${fmt(d.u0, 0)} kV` },
-          { x: p.d, y: d.uApplied, color: d.breakdown ? PAL.bad : PAL.surge, shape: 'ring', label: `Aplicado ${fmt(d.uApplied, 0)} kV` },
-        ]}
-        caption="Para sostener 200 kV (línea verde), la curva del mar pide ~7,8 cm mientras que la curva de Bogotá pide ~10,6 cm de aire."
-      />
-    );
-  },
+  plot: ({ d }) => (
+    <Plot
+      xDomain={[1e-7, 1e3]}
+      yDomain={[0.8, 7]}
+      xLog
+      xLabel="Tiempo t (s — escala logarítmica)"
+      yLabel="V (p.u.)"
+      series={[{ pts: E05_STEPS, color: PAL.surge, width: 2.6, steps: true, label: 'Clasificación por amplitud y duración (lámina 12)' }]}
+      refs={[{ at: 1, label: '1,0 p.u. (operación continua)', color: PAL.phase, dash: '3 4' }]}
+      markers={[{ x: d.t, y: d.pu, color: PAL.warn, label: `Tu punto: ${fmt(d.pu, 1)} p.u.` }]}
+      caption="Mesetas según la figura de la lámina 12: atmosféricas ≈ 6,4 p.u. hasta ~10⁻⁴ s · maniobras ≈ 3,9 p.u. (10⁻⁵–10⁻² s) · temporales ≈ 1,5 p.u. (hasta ~10 s) y después ≈ 1,3."
+    />
+  ),
 };
 
 /* =============================== e06 =============================== */
@@ -616,10 +648,10 @@ const e06: Experiment = {
       values: { u50: 700, sigma: 6, ptarget: 1, uapp: 600 },
     },
     {
-      id: 'rayo',
-      label: 'Impulso tipo rayo (dispersión menor σ = 3 %)',
-      note: 'Con σ = 3 %, la curva es más empinada y la zona de incertidumbre alrededor de U₅₀ es más angosta.',
-      values: { u50: 700, sigma: 3, ptarget: 10, uapp: 646 },
+      id: 'alta',
+      label: 'Prototipo con más dispersión (σ = 10 %)',
+      note: 'ilustración didáctica: con más dispersión, la curva se achata y el riesgo a un mismo voltaje aplicado sube.',
+      values: { u50: 700, sigma: 10, ptarget: 10, uapp: 646 },
     },
   ],
   compute: (p) => {
@@ -710,7 +742,7 @@ const e06: Experiment = {
     misconception: 'Decir «la cadena soporta 700 kV porque su CFO es 700 kV». Con 700 kV fallaría la mitad de las maniobras.',
     model: 'Distribución normal acumulada con desviación σ porcentual constante.',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'cardona', 'velasco'],
+  sources: ['expo77', 'expo39'],
   scene: ({ p, d, t }) => {
     const prob = d.pApplied;
     const trials = 40;

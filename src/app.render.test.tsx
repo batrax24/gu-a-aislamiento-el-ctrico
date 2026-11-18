@@ -54,11 +54,11 @@ function allStrings(e: Experiment, p: Params, d: Record<string, number>): string
 }
 
 describe('integridad del currículo', () => {
-  it('ordena los 19 simuladores de e01 a e19 sin saltos', () => {
-    expect(SEQUENTIAL_ORDER).toHaveLength(19);
+  it('ordena los 18 simuladores de e01 a e18 sin saltos', () => {
+    expect(SEQUENTIAL_ORDER).toHaveLength(18);
     expect(EXPERIMENTS.map((e) => e.id)).toEqual([...SEQUENTIAL_ORDER]);
-    expect(new Set(EXPERIMENTS.map((e) => e.id)).size).toBe(19);
-    expect(Object.keys(EXPERIMENT_BY_ID)).toHaveLength(19);
+    expect(new Set(EXPERIMENTS.map((e) => e.id)).size).toBe(18);
+    expect(Object.keys(EXPERIMENT_BY_ID)).toHaveLength(18);
     for (let i = 0; i < EXPERIMENTS.length; i++) {
       const { prev, next, index } = experimentNeighbors(EXPERIMENTS[i].id);
       expect(index).toBe(i);
@@ -72,19 +72,19 @@ describe('integridad del currículo', () => {
     expect(experimentNeighbors('e09').next?.id).toBe('e10');
     expect(experimentNeighbors('e11').next?.id).toBe('e12');
     expect(experimentNeighbors('e14').next?.id).toBe('e15');
-    expect(experimentNeighbors('e19').next).toBeUndefined();
+    expect(experimentNeighbors('e18').next).toBeUndefined();
   });
 
-  it('conserva 11 temas, 4 etapas, 10 hotspots, 27 fichas, 16 fuentes y 8 diagnósticos', () => {
+  it('conserva 11 temas, 4 etapas, 10 hotspots, 27 fichas, 2 fuentes y 8 diagnósticos', () => {
     expect(TOPICS).toHaveLength(11);
     expect(STAGES).toHaveLength(4);
     expect(LINE_HOTSPOTS).toHaveLength(10);
     expect(GLOSSARY).toHaveLength(27);
-    expect(ALL_SOURCES).toHaveLength(16);
+    expect(ALL_SOURCES).toHaveLength(2);
     expect(DIAGNOSTICS).toHaveLength(8);
     expect(experimentsForTopic(1)).toHaveLength(0);
     expect(experimentsForTopic(2).map((e) => e.id)).toEqual(['e01', 'e02', 'e03']);
-    expect(experimentsForTopic(11).map((e) => e.id)).toEqual(['e16', 'e18', 'e19']);
+    expect(experimentsForTopic(11).map((e) => e.id)).toEqual(['e16', 'e18']);
     for (const d of DIAGNOSTICS) {
       expect(d.options.some((o) => o.id === d.correct)).toBe(true);
       expect(EXPERIMENT_BY_ID[d.exp]).toBeTruthy();
@@ -135,7 +135,7 @@ describe('integridad del currículo', () => {
   });
 });
 
-describe('ejecución de los 19 laboratorios', () => {
+describe('ejecución de los 18 laboratorios', () => {
   it('calcula todos los presets, ejecuta goals/checks y renderiza escenas y gráficas sin NaN ni errores', () => {
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 

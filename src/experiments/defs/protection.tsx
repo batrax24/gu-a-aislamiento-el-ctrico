@@ -203,7 +203,7 @@ const e13: Experiment = {
       'Medir solo en invierno/época húmeda, o creer que 6 varillas dividen R entre 6. La interferencia mutua reduce el rendimiento (n^0,78).',
     model: 'Fórmulas de estado estacionario del material y rendimiento didáctico n^0,78. No incluye estratificación, ionización del suelo ni respuesta impulsiva.',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'velasco', 'expo'],
+  sources: ['expo77', 'expo39'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -472,7 +472,7 @@ const e14: Experiment = {
       'Creer que el flameo inverso depende solo de la resistencia de tierra. La inductancia, el reparto entre torres y el acoplamiento con la fase también deciden.',
     model: 'Modelo concentrado R–L con acoplamiento constante y reparto equitativo. La torre real exige propagación y modelos dependientes de frecuencia.',
   },
-  sources: ['expo39', 'expo77', 'guion', 'slides', 'velasco', 'expo'],
+  sources: ['expo77', 'expo39'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[
@@ -756,7 +756,7 @@ const e15: Experiment = {
       'Graficar |Γ| y perder la inversión de polaridad, o etiquetar Z₂ = 2.000 Ω como «extremo abierto» (Γ sería +1, no +0,667).',
     model: 'Línea ideal sin pérdidas, unión resistiva y coeficientes reales. No incluye atenuación por corona, dispersión ni capacidad del equipo.',
   },
-  sources: ['expo77', 'expo39', 'guion', 'slides', 'velasco', 'pararrayos', 'ejercicios'],
+  sources: ['expo77', 'expo39'],
   scene: ({ p, d, t }) => (
     <SceneCanvas
       legend={[

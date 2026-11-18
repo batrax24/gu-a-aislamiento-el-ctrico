@@ -1,6 +1,6 @@
 # AislaLab · Guía interactiva de aislamiento eléctrico — edición exposición
 
-**Edición exposición v4.0.0.** Una guía visual e interactiva de coordinación de aislamiento centrada en tu exposición: los **7 temas de la Expo 77** más los **fundamentos de sobretensiones (39 diapositivas)**, sobre **una misma línea real de 245 kV en Bogotá**: nube de tormenta, cable de guarda, cadena de discos, vano con viento, puesta a tierra, ondas viajeras, pararrayos de ZnO y transformador.
+**Edición exposición v4.0.0.** Una guía visual e interactiva de coordinación de aislamiento centrada en tu exposición: los **7 temas de la Expo 77** más los **fundamentos de sobretensiones (39 diapositivas)**, sobre **una misma línea real de 245 kV en Bogotá**: nube de tormenta, cable de guarda, cadena de discos, vano con viento, puesta a tierra, ondas viajeras, niveles IEC 71-1 y transformador. Todos los ejemplos numéricos provienen de las dos exposiciones.
 
 En lugar de empezar con fórmulas sueltas, AislaLab nombra primero el objeto físico, permite mover sus variables y muestra después la ecuación con los números del caso.
 
@@ -12,12 +12,12 @@ En lugar de empezar con fórmulas sueltas, AislaLab nombra primero el objeto fí
 | --- | ---: | --- |
 | Temas | 11 | Introducción + sobretensiones + rayo + 7 temas de la exposición (01–07) + cierre IEC e integración |
 | Etapas físicas | 4 | Sobretensiones y rayo → mecanismos y cadena → geometría y tierra en la torre → propagación, corona y cierre |
-| Simuladores | 19 | `e01`–`e19`: escena canvas animada, gráfica SVG, controles, lecturas, ecuaciones, semáforos, reto, guía de aprendizaje y fuentes |
+| Simuladores | 18 | `e01`–`e18`: escena canvas animada, gráfica SVG, controles, lecturas, ecuaciones, semáforos, reto, guía de aprendizaje y fuentes |
 | Mapa físico | 10 puntos | Hotspots numerados y activables por teclado, con enlace al tema y a los simuladores relacionados |
 | Glosario visual | 27 fichas | Símbolo, explicación en lenguaje llano, ejemplo numérico y enlace al banco donde se mueve |
 | Diagnósticos | 8 casos | Situaciones de campo con explicación y simulador de origen |
 | Banco numérico | Generado | Preguntas desde los presets reales, con tolerancia del 2 % y solución paso a paso |
-| Fuentes | 16 | Las dos exposiciones como fuentes principales + documentos del curso + normas IEC 60060/60071/60099/60815 |
+| Fuentes | 2 | Las dos exposiciones del curso (Expo 77 y Sobretensiones 39) como única fuente de ejemplos y cifras |
 
 ### Mapa de la exposición
 
@@ -33,7 +33,7 @@ En lugar de empezar con fórmulas sueltas, AislaLab nombra primero el objeto fí
 | T8 05 Puesta a tierra | Expo 77 pp. 34–47 · Sobretensiones p. 32 | `e13`, `e14` |
 | T9 06 Ondas viajeras | Expo 77 pp. 48–54 | `e15` |
 | T10 07 Efecto corona | Expo 77 pp. 55–61 | `e17` |
-| T11 Cierre: niveles IEC, pararrayos e integración | Expo 77 pp. 62–77 · Sobretensiones pp. 14–17 | `e16`, `e18`, `e19` |
+| T11 Cierre: niveles IEC e integración | Expo 77 pp. 62–77 · Sobretensiones pp. 14–17 | `e16`, `e18` |
 
 ---
 
@@ -44,7 +44,7 @@ Requiere **Node ≥ 20.19** (probado con Node 22).
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # pruebas: números, render de los 19 bancos e interacciones DOM
+npm test           # pruebas: números, render de los 18 bancos e interacciones DOM
 npm run build      # tsc -b + Vite, salida en dist/
 npm run preview    # vista previa de producción en :4173
 ```
@@ -60,9 +60,9 @@ El proyecto no depende de fuentes, imágenes, iconos ni APIs externas: todo se d
 3. **Tema:** lee el caso real y la analogía; abre los simuladores asociados.
 4. **Simulador:** carga un preset, mueve controles, pausa/repite la escena, observa lecturas y gráfica, y cierra el reto. Los «requisitos» deben cumplirse en el estado actual; los «hitos» quedan registrados al alcanzarlos una vez.
 5. **Simulacro:** 8 preguntas por ronda (5 cálculos + 3 diagnósticos), con soluciones que enlazan de vuelta al laboratorio.
-6. **Fuentes:** consulta la bibliografía y la bitácora de correcciones.
+6. **Fuentes:** consulta las dos exposiciones y la bitácora de esta edición.
 
-Rutas por hash: `#/`, `#/catalogo`, `#/glosario`, `#/tema/1`…`#/tema/11`, `#/exp/e01`…`#/exp/e19`, `#/practica`, `#/fuentes`.
+Rutas por hash: `#/`, `#/catalogo`, `#/glosario`, `#/tema/1`…`#/tema/11`, `#/exp/e01`…`#/exp/e18`, `#/practica`, `#/fuentes`.
 
 ---
 
@@ -81,15 +81,15 @@ src/
     storage.ts            Progreso v2 + copia de seguridad + migración LAB·CA v2
   content/
     topics.ts             11 temas, 4 etapas, mapa tema→experimentos (edición exposición)
-    bibliography.ts       16 fuentes (2 exposiciones + curso + IEC)
+    bibliography.ts       2 fuentes (las dos exposiciones del curso)
     glossary.ts           27 fichas visuales
     lineMap.ts            10 hotspots del panorama físico
     practica.ts           8 diagnósticos + banco numérico sembrado
   experiments/
     types.ts              Contrato de Experiment, Goal, Quiz, ParamDef…
-    index.ts              Orden secuencial e01→e19 y vecinos
+    index.ts              Orden secuencial e01→e18 y vecinos
     common.tsx            Clasificación de frentes de onda
-    defs/                 e01–e19 en 6 archivos temáticos
+    defs/                 e01–e18 en 6 archivos temáticos
   components/
     Icons.tsx             Iconos vectoriales y emblema
     ui.tsx                Canvas, Plot, BarComparisonPlot, controles, lecturas…
@@ -121,9 +121,9 @@ docs/
 | Bogotá 2.640 m, 14 °C | `p = 73,378 kPa` · `δ = 0,7393` · `700·δ^0,75 = 558,11 kV` |
 | `245 kV`, `k_f = 25 mm/kV` | `6.125 mm` · 21 discos · `3,066 m` |
 | `U₅₀ = 700 kV`, `σ = 6 %`, `P = 10 %` | `646,17 kV` |
-| Varilla 3 m, `ρ = 300 Ω·m` | `101,81 Ω` |
+| Varilla `s = 3 m`, `r = 0,008 m`, `ρ = 100 Ω·m` | `R ≈ 35,1 Ω` |
 | `Z₁ = 400 Ω`, `Z₂ = 100 Ω` | `Γ = −0,60` · `τ = 0,40` |
-| ZnO `U_res = 600 kV`, `BIL = 1.050 kV` | `M = 59,1 %` con 12 m de conexión |
+| IEC 71-1 (lámina 17) | `BIL = K_i·NPR` → `BIL_n ≥ BIL` → `BSL = K·BIL_n` → `K_b = BSL/NPM ≥ K_m` |
 | Peek `U = 150`, `U₀ = 120` | `10,29 kW/km` |
 
 ---

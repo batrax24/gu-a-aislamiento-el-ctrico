@@ -2,18 +2,15 @@ import { ALL_SOURCES } from '../content/bibliography';
 import { Btn, Chip } from './ui';
 
 const CORRECTIONS = [
-  ['Navegación', 'El botón «Siguiente» saltaba 7 simuladores al pasar de tema. AislaLab usa un orden secuencial de los 19.'],
-  ['Ruta', 'La miga de pan del tema volvía siempre al Tema 1. Ahora vuelve al inicio.'],
-  ['e02', 'El escenario de 500 kV (Uₘ = 550 kV) quedaba limitado por el slider en 420 kV; el rango llega a 550 kV.'],
-  ['e05', 'La escena y la nota contradecían el cálculo sobre δ. Ahora U₀, U aplicada y el estado físico coinciden.'],
-  ['e07', 'La torre bajaba al aumentar la altitud. Ahora sube por la ladera, con cota y moléculas de aire.'],
-  ['e09', 'El CFO corregido se etiquetaba como «nivel del mar» y se dividía por δ dos veces. Se corrige una sola vez.'],
-  ['e10', 'La cadena se alejaba de la torre con viento. Ahora se mece hacia el acero y d_h se reduce.'],
-  ['e12', 'Faltaban arcos electrogeométricos a escala. Ahora se dibuja intercepción vs. falla de apantallamiento.'],
-  ['e15', 'Z₂ mínimo era 5 Ω (impidía el cortocircuito 0 Ω) y se graficaba |Γ|. Ahora Γ conserva su signo.'],
-  ['e18', 'Se comprobaba d.margin en vez de d.marginOk, se comparaba contra 1400 kV fijo y se dibujaban líneas inclinadas. Ahora usa p.cfo y barras esfuerzo vs. soporte.'],
-  ['e19', 'La ecuación mostraba una exponencial y la gráfica usaba 0..5 en bruto. Ahora usa (1+t/τ)^−1,2 y MΩ en escala log con 30/60/600 s.'],
+  ['Fuentes', 'Toda la guía se reescribió usando las dos exposiciones del curso como única fuente de ejemplos, fórmulas y cifras. Se retiraron normas y bibliografía externa del texto de los simuladores.'],
+  ['e04', 'El modelo estadístico del rayo usa las distribuciones de la lámina 25 (negativa Ī = 29,96 kA/σ_ln = 0,65; positiva 35,16/1,23) y la aproximación 1/(1 + (I/31)^2,6) de la lámina 26, en lugar de fórmulas ajenas al material.'],
+  ['e05', 'La ruptura en gases se reconstruyó con los tres regímenes DC / AC / impulso y los retardos estadístico t_s y formativo t_f de las láminas 34–36, con la curva V–t cualitativa de la lámina 12.'],
+  ['e11', 'La separación fase–fase conserva la expresión del curso D ≈ K·√(F + L) + Vₙ/150 (Expo 77, pp. 25–26) y se retiraron fórmulas externas.'],
+  ['e16', 'El simulador se reconstruyó sobre el procedimiento IEC 71-1 de la lámina 17: NPR y NPM del descargador → K_i y K_m → BIL = K_i·NPR → BIL_n normalizado → BSL = K·BIL_n → K_b = BSL/NPM ≥ K_m.'],
+  ['e18', 'El proyecto integral verifica cadena, altitud/δ, guarda, tierra y niveles IEC con los modelos de las dos exposiciones; los factores 1,25 / 1,15 / 20 % que las láminas no fijan se declaran como hipótesis adoptadas.'],
+  ['e19', 'El simulador de medición de aislamiento (megóhmetro, DAR/PI) se eliminó: no aparece en ninguna de las dos exposiciones.'],
 ];
+
 
 export function SourcesView({ onNavigateHome }: { onNavigateHome: () => void }) {
   return (
@@ -21,9 +18,9 @@ export function SourcesView({ onNavigateHome }: { onNavigateHome: () => void }) 
       <div className="page-head">
         <div>
           <span className="eyebrow">Trazabilidad · {ALL_SOURCES.length} fuentes</span>
-          <h1>De dónde salen los números y qué se corrigió</h1>
+          <h1>De dónde salen los números y qué cambió</h1>
           <p>
-            AislaLab edición exposición reorganiza el currículo en 11 temas centrados en la exposición (7 temas de la Expo 77 + fundamentos de sobretensiones), conserva los 19 simuladores y los 8 diagnósticos, y suma las dos exposiciones como fuentes principales (16 fuentes en total).
+            AislaLab edición exposición reorganiza el currículo en 11 temas centrados en las dos exposiciones del curso (7 temas de la Expo 77 + fundamentos de sobretensiones), conserva 18 simuladores y 8 diagnósticos, y usa las dos exposiciones como única fuente de los ejemplos.
           </p>
         </div>
         <Btn tone="soft" onClick={onNavigateHome}>
@@ -38,7 +35,7 @@ export function SourcesView({ onNavigateHome }: { onNavigateHome: () => void }) 
             <article className="source-card" key={s.key}>
               <div className="source-top">
                 <span className="source-num">{String(i + 1).padStart(2, '0')}</span>
-                {s.normative ? <Chip tone="accent">Norma IEC</Chip> : <Chip tone="neutral">Material del curso</Chip>}
+                <Chip tone="neutral">Material del curso</Chip>
               </div>
               <h3>{s.short}</h3>
               <p className="source-title">{s.title}</p>
@@ -54,8 +51,8 @@ export function SourcesView({ onNavigateHome }: { onNavigateHome: () => void }) 
       </section>
 
       <section className="sources-section">
-        <h2>Bitácora de correcciones respecto a la versión 2</h2>
-        <div className="corrections-table" role="table" aria-label="Correcciones de AislaLab">
+        <h2>Bitácora de esta edición</h2>
+        <div className="corrections-table" role="table" aria-label="Cambios de AislaLab">
           <div className="corrections-row corrections-head" role="row">
             <span role="columnheader">Origen</span>
             <span role="columnheader">Corrección aplicada</span>

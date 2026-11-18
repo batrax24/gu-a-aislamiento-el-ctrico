@@ -29,7 +29,7 @@ export function canvasNaNProblems(): string[] {
 
 /**
  * jsdom no trae un motor de canvas: el stub registra cada llamada para poder
- * verificar que las 19 escenas y gráficas llegan hasta el final sin lanzar.
+ * verificar que las 18 escenas y gráficas llegan hasta el final sin lanzar.
  */
 export function stubCanvasContext() {
   const ctx: Record<string, unknown> = {};

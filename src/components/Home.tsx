@@ -60,7 +60,7 @@ export function Home({
               Empezar por el Tema 1
             </Btn>
             <Btn tone="soft" onClick={onCatalog}>
-              Explorar los 19 simuladores
+              Explorar los 18 simuladores
             </Btn>
             <Btn tone="ghost" onClick={onPractice}>
               Ir al simulacro
@@ -140,7 +140,7 @@ export function Home({
             <span>BIL 1050 kV</span>
           </div>
           <p className="blueprint-note">
-            Un solo hilo conductor: la misma línea de 245 kV atraviesa los 11 temas de la exposición y los 19 bancos de prueba.
+            Un solo hilo conductor: la misma línea de 245 kV atraviesa los 11 temas de la exposición y los 18 bancos de prueba.
           </p>
         </aside>
       </section>
@@ -149,7 +149,7 @@ export function Home({
         <article className="principle">
           <span className="pnum">1</span>
           <h3>Nombra el objeto</h3>
-          <p>Antes de calcular, ubica dónde está el fenómeno: una cadena, un vano con viento, una varilla en el suelo o un ZnO junto al transformador.</p>
+          <p>Antes de calcular, ubica dónde está el fenómeno: una cadena, un vano con viento, una varilla en el suelo o los niveles IEC junto al transformador.</p>
         </article>
         <article className="principle">
           <span className="pnum">2</span>

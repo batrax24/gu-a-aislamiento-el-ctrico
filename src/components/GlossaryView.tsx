@@ -33,7 +33,7 @@ export function GlossaryView({
           </p>
         </div>
         <Btn tone="soft" onClick={onNavigateCatalog}>
-          Ver los 19 simuladores
+          Ver los 18 simuladores
         </Btn>
       </div>
 
